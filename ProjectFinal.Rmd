@@ -1,6 +1,6 @@
 ---
-title: "Untitled"
-author: "Aaron Abromowitz"
+title: "Time Series Project"
+author: "Aaron Abromowitz and Alex Thibeaux"
 date: "2024-11-16"
 output: html_document
 ---
