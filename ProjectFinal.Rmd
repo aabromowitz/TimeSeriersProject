@@ -9,22 +9,95 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+# EDA
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+## Median Housing Sale Price
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+Our variable of interest is the Median Housing Sale Price.  This was quarterly data starting in 1965.
 
-```{r cars}
-summary(cars)
+```{r}
+file_path = "https://raw.githubusercontent.com/aabromowitz/TimeSeriersProject/refs/heads/main/MSPUS.csv"
+mhp <- read.csv(file_path, header = TRUE)
+mhp = mhp$MSPUS 
+library(tswge)
+plot(ts(mhp/1000, frequency=4,start=c(1965,1)),xlab='Year',ylab='Housing price (in thousands of dollars)')
+title(main='Median US Housing Price from 1965')
+acf(mhp,ylab='',main='ACF')
+x = parzen.wge(mhp)
 ```
 
-## Including Plots
+The realization looks like it is increasing linearly.  This data could be model with a signal plus noise, with a linear signal.
 
-You can also embed plots, for example:
+The realization appears to be non stationary.  There is evidence that the data is increasing over time.  In addition, the variation appears much higher in later years as in earlier years, showing that variance is increasing over time as well.  When modeling, it may be useful to take the logarithm of the data before modeling.
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+The ACF shows very slowly dampening autocorrelations.  The parzen window also shows a very low frequency.  This could points to a (1-B) term which could be removed with a high-pass difference filter.
+
+## Home Ownership Rate
+
+We used 4 exogenous variables.  The first was home ownership rate.  Like the variable of interest, this was quarterly data starting from 1965.
+
+```{r}
+file_path = "https://raw.githubusercontent.com/aabromowitz/TimeSeriersProject/refs/heads/main/RHORUSQ156N.csv"
+hor <- read.csv(file_path, header = TRUE)
+hor <- hor$RHORUSQ156N
+plot(ts(hor, frequency=4,start=c(1965,1)),xlab='Year',ylab='Percentage')
+title(main='Home Ownership Rate from 1965')
+acf(hor,ylab='',main='ACF')
+x = parzen.wge(hor)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+Unlike the median house price, the home ownership rate appears to be stationary.  There isn't a linear trend to the data, and the variance seems to be constant over time.
+
+The ACF does show that there are dampening autocorrelations, but not quite at the rate as for median house price.  This could point to an ARMA model being appropriate for the home ownership rate.  
+
+Similar to median house price, the Parzen Window shows that 0 is a prominent frequency.
+
+## Housing Units Completed
+
+The next exogenous variable is Housing Units Completed.  This was a monthly variable, starting from 1968.
+
+```{r}
+file_path = "https://raw.githubusercontent.com/aabromowitz/TimeSeriersProject/refs/heads/main/COMPUTSA.csv"
+huc <- read.csv(file_path, header = TRUE)
+huc <- huc$COMPUTSA
+plot(ts(huc, frequency=12,start=c(1968,1)),xlab='Year',ylab='')
+title(main='Housing Units Completed from 1968')
+acf(huc,ylab='',main='ACF')
+x = parzen.wge(huc)
+```
+
+This has very similar characteristics to home ownership rate.  It's autocorrelations dampen a little more slowly, but the ACF and Parzen Window look very similar.  This variable likewise shows evidence for being stationary.
+
+## Supply of New Houses
+
+The next exogenous variable is Housing Units Completed.  This was a monthly variable, starting from 1963.
+
+```{r}
+file_path = "https://raw.githubusercontent.com/aabromowitz/TimeSeriersProject/refs/heads/main/MSACSR.csv"
+snh <- read.csv(file_path, header = TRUE)
+snh <- snh$MSACSR
+plot(ts(snh, frequency=12,start=c(1963,1)),xlab='Year',ylab='')
+title(main='Supply of New Houses from 1963')
+acf(snh,ylab='',main='ACF')
+x = parzen.wge(snh)
+```
+
+Similar to home ownership rate as well, but with even more quickly dampening autocorrelations.  This variable likewise shows evidence for being stationary.
+
+## House Price Index
+
+The next exogenous variable is House Price Index.  This was a quarterly variable, starting from 1975.
+
+```{r}
+file_path = "https://raw.githubusercontent.com/aabromowitz/TimeSeriersProject/refs/heads/main/USSTHPI.csv"
+hpi <- read.csv(file_path, header = TRUE)
+hpi <- hpi$USSTHPI
+plot(ts(hpi, frequency=4,start=c(1975,1)),xlab='Year',ylab='')
+title(main='House Price Index from 1975')
+acf(hpi,ylab='',main='ACF')
+x = parzen.wge(hpi)
+```
+
+The realization has a similar upward trend to the Housing Sale Price.  It seems very smooth though, very little variance.  Because of the upward trend though, it shows evidence against stationarity.
+
+The ACF and Parzen Window are also similar to those of Housing Sale Price.
