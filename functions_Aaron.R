@@ -8,9 +8,24 @@ roll.win.sigplusnoise.ada <- function(series, horizon, linear = TRUE, method = "
   # Loop through all the windows, and calculate RMSE for each
   rmses = numeric(numRmses)
   for (iPred in 1:numRmses){
-    sink("NUL")
+    # This gave me worse results for some reason
+    # invisible(capture.output(f = fore.sigplusnoise.wge(series[1:(minSizeForSigPlusNoise-1+iPred)],linear = linear, max.p = max.p, n.ahead = horizon, lastn = FALSE, plot = FALSE)))
+    
+    # suppress output
+    os <- Sys.info()[["sysname"]]
+    if (os == "Windows"){
+      sink("NUL")
+    } else {
+      sink("/dev/null")
+    }
+    
+    # forecast
     f = fore.sigplusnoise.wge(series[1:(minSizeForSigPlusNoise-1+iPred)],linear = linear, max.p = max.p, n.ahead = horizon, lastn = FALSE, plot = FALSE)
-    sink() # the output is annoying to me
+    
+    # suppression removed after fore.sigplusnoise.wge
+    sink()
+    
+    # calculate RMSE
     rmse = sqrt(mean((series[(minSizeForSigPlusNoise+iPred):(minSizeForSigPlusNoise+iPred+horizon-1)]-f$f)^2))
     rmses[iPred]=rmse
   }

@@ -59,3 +59,6 @@ suppressMessages({f = fore.sigplusnoise.wge(series[1:2],linear = linear, max.p =
 sink("NUL")
 f = fore.sigplusnoise.wge(series[1:2],linear = linear, max.p = max.p, n.ahead = horizon, lastn = FALSE, plot = FALSE)
 sink()
+
+# windows vs linux
+os <- Sys.info()[["sysname"]]
