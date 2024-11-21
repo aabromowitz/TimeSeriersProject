@@ -4,10 +4,12 @@ roll.win.sigplusnoise.ada <- function(series, horizon, linear = TRUE, method = "
   l = length(series)
   minSizeForSigPlusNoise = max(2,max.p+1)
   numRmses = l - horizon - minSizeForSigPlusNoise
+  
+  # Loop through all the windows, and calculate RMSE for each
   rmses = numeric(numRmses)
   for (iPred in 1:numRmses){
     sink("NUL")
-    f = invisible(fore.sigplusnoise.wge(series[1:(minSizeForSigPlusNoise-1+iPred)],linear = linear, max.p = max.p, n.ahead = horizon, lastn = FALSE, plot = FALSE))
+    f = fore.sigplusnoise.wge(series[1:(minSizeForSigPlusNoise-1+iPred)],linear = linear, max.p = max.p, n.ahead = horizon, lastn = FALSE, plot = FALSE)
     sink() # the output is annoying to me
     rmse = sqrt(mean((series[(minSizeForSigPlusNoise+iPred):(minSizeForSigPlusNoise+iPred+horizon-1)]-f$f)^2))
     rmses[iPred]=rmse
