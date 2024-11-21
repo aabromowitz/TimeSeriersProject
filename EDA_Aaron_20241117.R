@@ -6,6 +6,9 @@ plotts.sample.wge(mhp$MSPUS)
 d.mph = artrans.wge(mhp$MSPUS,1)
 acf(mhp$MSPUS,ylab='',main='ACF')
 parzen.wge(mhp$MSPUS)
+# acf after differencing by 1, lines fall outside white noise lines
+acf(d.mph,ylab='',main='Autocorrelations after Differencing Median Sale Price US')
+parzen.wge(d.mph)
 
 # Huh, that looks like the variance is increasing over time.
 # But you can't just log it, because it's negative a lot of the time.
@@ -13,6 +16,8 @@ parzen.wge(mhp$MSPUS)
 mhp.log = log(mhp$MSPUS)
 plotts.sample.wge(mhp.log)
 d.log = artrans.wge(mhp.log,1)
+# acf after differencing logged data
+acf(d.log, ylab='', main='Autocorrelations after Differencing Logged Median Sale Price US')
 
 # Checking on ARMA after the differencing
 aic5.ar.wge(d.log,p=0:60,type='aic',method='burg') # 4 is best, 20 is highest
@@ -33,8 +38,9 @@ file_path = "https://raw.githubusercontent.com/aabromowitz/TimeSeriersProject/re
 hor <- read.csv(file_path, header = TRUE)
 hor <- hor$RHORUSQ156N
 plotts.sample.wge(hor)
-aic5.wge(hor)
+aic5.wge(hor) # 5-1 is best, 4-2 is highest
 d.hor = artrans.wge(hor,1)
+acf(d.hor) # ACF of differenced data
 
 # plots for home ownership rate
 dev.off()
@@ -77,4 +83,4 @@ plot(ts(hpi, frequency=4,start=c(1975,1)),xlab='Year',ylab='')
 title(main='House Price Index from 1975')
 acf(hpi,ylab='',main='ACF')
 x = parzen.wge(hpi)
->>>>>>> d2153a0d831bcb01ef8bf14de5ee40393f6dbdc7
+# >>>>>>> d2153a0d831bcb01ef8bf14de5ee40393f6dbdc7
