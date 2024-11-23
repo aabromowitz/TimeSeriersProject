@@ -62,3 +62,51 @@ sink()
 
 # windows vs linux
 os <- Sys.info()[["sysname"]]
+
+################################################################################
+
+# Dr Sadler was saying that I'd need to get the b0, b1, and phi's for all the data
+# Then use those to predict
+
+# Getting b0, b1, and phi's for all the data
+series = log.mhp
+horizon = 12
+linear = TRUE
+method = "mle"
+freq=0
+max.p=5
+f = fore.sigplusnoise.wge(series,linear = linear, max.p = max.p, n.ahead = horizon, lastn = FALSE, plot = FALSE)
+b0 = f$b0hat
+b1 = f$b1hat
+phis = f$phi.z # 5 phis
+
+num_phi = length(phis) # Will need at least 5 before to forecast, if an AR(5)
+l = length(series)
+numRmses = l - horizon - num_phi + 1 # If you had a data set of size 17, an AR(5), and a horizon of 12, you'd only be able to calculate 1 RMSE
+rmses = numeric(numRmses)
+
+for (iFore in 1:numRmses){
+  tTrain = iFore:(iFore+num_phi-1)
+  tTest = (iFore + num_phi):(iFore + num_phi + horizon - 1)
+  resid = series[tTrain] - (b0 + b1*tTrain) # true - predicted
+  fResid = fore.arma.wge(resid,phi=phis,n.ahead=horizon,lastn=FALSE,plot=FALSE)
+  fSeries = b0 + b1*tTest + fResid$f
+  rmse = sqrt(mean((series[tTest]-fSeries)^2))
+  rmses[iFore]=rmse
+}
+
+hist(rmses)
+mean(rmses)
+
+# Try out function
+source("functions_Aaron.R")
+roll.win.rmse.linplusnoise.ada(series, horizon) # 0.06524557
+roll.win.rmse.linplusnoise.ada(series, horizon, max.p=1) # 0.06684004
+roll.win.rmse.linplusnoise.ada(series, horizon, max.p=2) # 0.06736302
+roll.win.rmse.linplusnoise.ada(series, horizon, max.p=3) # 0.06736302
+roll.win.rmse.linplusnoise.ada(series, horizon, max.p=4) # 0.0660697
+roll.win.rmse.linplusnoise.ada(series, horizon, max.p=5) # 0.06524557
+roll.win.rmse.linplusnoise.ada(series, horizon, max.p=6) # 0.06514193
+roll.win.rmse.linplusnoise.ada(series, horizon, max.p=7) # 0.06514193
+roll.win.rmse.linplusnoise.ada(series, horizon, max.p=8) # 0.06514193
+roll.win.rmse.linplusnoise.ada(series, horizon, max.p=16) # 0.06514193
