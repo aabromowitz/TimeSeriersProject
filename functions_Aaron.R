@@ -37,7 +37,7 @@ roll.win.sigplusnoise.ada.v1 <- function(series, horizon, linear = TRUE, method 
   mean(rmses)
 }
 
-roll.win.rmse.linplusnoise.ada <- function(series, horizon, linear = TRUE, method = "mle", freq=0, max.p=5) {
+roll.win.rmse.linplusnoise.ada <- function(series, horizon, method = "mle", freq=0, max.p=5) {
   
   # suppress output
   os <- Sys.info()[["sysname"]]
@@ -48,7 +48,7 @@ roll.win.rmse.linplusnoise.ada <- function(series, horizon, linear = TRUE, metho
   }
   
   # Determine overall b0, b1, and phis for the series
-  f = fore.sigplusnoise.wge(series,linear = linear, max.p = max.p, n.ahead = horizon, lastn = FALSE, plot = FALSE)
+  f = fore.sigplusnoise.wge(series,linear = TRUE, max.p = max.p, n.ahead = horizon, lastn = FALSE, plot = FALSE)
   b0 = f$b0hat
   b1 = f$b1hat
   phis = f$phi.z

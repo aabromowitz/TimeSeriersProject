@@ -110,3 +110,10 @@ roll.win.rmse.linplusnoise.ada(series, horizon, max.p=6) # 0.06514193
 roll.win.rmse.linplusnoise.ada(series, horizon, max.p=7) # 0.06514193
 roll.win.rmse.linplusnoise.ada(series, horizon, max.p=8) # 0.06514193
 roll.win.rmse.linplusnoise.ada(series, horizon, max.p=16) # 0.06514193
+
+
+# Compre to rolling window for ARIMA
+roll.win.rmse.wge(series,horizon,d=1)
+
+# What was the rolling window before?
+roll.win.sigplusnoise.ada.v1(series, horizon) # 0.09438185, ooh lower
