@@ -206,7 +206,7 @@ ASE.b.exp # 1.11B
 ASEexp < ASE.b.exp
 ```
 ### Signal Plus Noise using all data
-```{r}
+```{r Signal Plus Noise without holding data out}
 # Making sure log.mhp is the correct data
 log.mhp = fed_housing_data$Median_Sales_Price
 
@@ -252,7 +252,7 @@ ASEexp.full < ASE.b.exp.full
 ```
 
 ### Signal Plus Noise using 1 Yr Horizon
-```{r}
+```{r Signal Plus Noise with 1 yr Horizon}
 # Making sure log.mhp is the correct data
 log.mhp = fed_housing_data$Median_Sales_Price
 
@@ -295,7 +295,7 @@ ASEexp.h4 < ASE.b.exp.h4
 
 ```
 ### Signal Plus Noise using 3 Yr Horizon
-```{r}
+```{r Signal Plus Noise with 3 yr horizon}
 # Making sure log.mhp is the correct data
 log.mhp = fed_housing_data$Median_Sales_Price
 
@@ -337,7 +337,7 @@ ASE.b.exp.h12 # 621.99M
 ASEexp.h12 < ASE.b.exp.h12
 ```
 ### Signal Plus Noise using 5 Yr Horizon
-```{r}
+```{r Signal plus noise with 5 yr horizon}
 # Making sure log.mhp is the correct data
 log.mhp = fed_housing_data$Median_Sales_Price
 
@@ -481,22 +481,105 @@ mle.p6h4 < burg.p6h4
 mle.p6h12 < burg.p6h12
 mle.p6h20 < burg.p6h20
 ```
-### Model Choice
+## Evaluating Models
+```{r}
+# Look at White Noise
+plotts.sample.wge(fit.mle.sig_notTT$resid, lag.max = 48, arlimits = TRUE)
+ljung.wge(fit.mle.sig_notTT$resid, p = 6, q = 0, K = 48)
+
+spn.mle.ar6.1 = gen.sigplusnoise.wge(n=198, b0 = fit.mle.sig_notTT$b0hat, 
+                                   b1 = fit.mle.sig_notTT$b1hat,
+                                   phi=fit.mle.sig_notTT$phi.z, 
+                                   vara = fit.mle.sig_notTT$wnv, plot = F)
+spn.mle.ar6.2 = gen.sigplusnoise.wge(n=198, b0 = fit.mle.sig_notTT$b0hat, 
+                                   b1 = fit.mle.sig_notTT$b1hat,
+                                   phi=fit.mle.sig_notTT$phi.z, 
+                                   vara = fit.mle.sig_notTT$wnv, plot = F)
+spn.mle.ar6.3 = gen.sigplusnoise.wge(n=198, b0 = fit.mle.sig_notTT$b0hat, 
+                                   b1 = fit.mle.sig_notTT$b1hat,
+                                   phi=fit.mle.sig_notTT$phi.z, 
+                                   vara = fit.mle.sig_notTT$wnv, plot = F)
+spn.mle.ar6.4 = gen.sigplusnoise.wge(n=198, b0 = fit.mle.sig_notTT$b0hat, 
+                                   b1 = fit.mle.sig_notTT$b1hat,
+                                   phi=fit.mle.sig_notTT$phi.z, 
+                                   vara = fit.mle.sig_notTT$wnv, plot = F)
+spn.mle.ar6.5 = gen.sigplusnoise.wge(n=198, b0 = fit.mle.sig_notTT$b0hat, 
+                                   b1 = fit.mle.sig_notTT$b1hat,
+                                   phi=fit.mle.sig_notTT$phi.z, 
+                                   vara = fit.mle.sig_notTT$wnv, plot = F)
+spn.mle.ar6.6 = gen.sigplusnoise.wge(n=198, b0 = fit.mle.sig_notTT$b0hat, 
+                                   b1 = fit.mle.sig_notTT$b1hat,
+                                   phi=fit.mle.sig_notTT$phi.z, 
+                                   vara = fit.mle.sig_notTT$wnv, plot = F)
+spn.mle.ar6.7 = gen.sigplusnoise.wge(n=198, b0 = fit.mle.sig_notTT$b0hat, 
+                                   b1 = fit.mle.sig_notTT$b1hat,
+                                   phi=fit.mle.sig_notTT$phi.z, 
+                                   vara = fit.mle.sig_notTT$wnv, plot = F)
+spn.mle.ar6.8 = gen.sigplusnoise.wge(n=198, b0 = fit.mle.sig_notTT$b0hat, 
+                                   b1 = fit.mle.sig_notTT$b1hat,
+                                   phi=fit.mle.sig_notTT$phi.z, 
+                                   vara = fit.mle.sig_notTT$wnv, plot = F)
+spn.mle.ar6.9 = gen.sigplusnoise.wge(n=198, b0 = fit.mle.sig_notTT$b0hat, 
+                                   b1 = fit.mle.sig_notTT$b1hat,
+                                   phi=fit.mle.sig_notTT$phi.z, 
+                                   vara = fit.mle.sig_notTT$wnv, plot = F)
+spn.mle.ar6.10 = gen.sigplusnoise.wge(n=198, b0 = fit.mle.sig_notTT$b0hat, 
+                                   b1 = fit.mle.sig_notTT$b1hat,
+                                   phi=fit.mle.sig_notTT$phi.z, 
+                                   vara = fit.mle.sig_notTT$wnv, plot = F)
+
+ten.generated = list(spn.mle.ar6.1, spn.mle.ar6.2, spn.mle.ar6.3, spn.mle.ar6.4, spn.mle.ar6.5, spn.mle.ar6.6, spn.mle.ar6.7, spn.mle.ar6.8, spn.mle.ar6.9, spn.mle.ar6.10)
+
+# ten.generated[[1]]
+# parzen.wge(ten.generated[[1]])
+
+# Compare Spectral Densities
+sims = 10
+SpecDen = parzen.wge(log.mhp, plot = FALSE)
+plot(SpecDen$freq,SpecDen$pzgram, type = "l", lwd = 3)
+
+for( i in 1: sims)
+{
+   SpecDen2 = parzen.wge(ten.generated[[i]], plot = FALSE)
+   lines(SpecDen2$freq,SpecDen2$pzgram, lwd = 2, col = "red")
+}
+
+#Compare ACFs
+sims = 10
+ACF = acf(log.mhp, plot = "FALSE")
+plot(ACF$lag ,ACF$acf , type = "l", lwd = 4)
+
+for( i in 1: sims)
+{
+   ACF2 = acf(ten.generated[[i]], plot = "FALSE")
+   lines(ACF2$lag ,ACF2$acf, lwd = 1, col = "red")
+}
+```
+
+## Model Choice
+
 While the burg estimates had a lower AIC than the MLE estimates, the MLE method of forecasting had better ASE and better rolling window RMSE for all three forecasts (1 yr, 3 yr, and 5 yr)
 
 Our final Signal Plus Noise Model is Xt = 10.871 + .011t + zt, where (1 - .716B - .367B2 - 0.137B3 + 0.062B4 + .076B5 + .118B5)Zt with sigma2 = 0.0006929526
 
 Wording: 
 
-In [horizon], we are 95% confident that the [measure] will be between [forecast$ll] and [forecast$ul]. Our best estimate is [forecast$f].
-Ex: In two months, we are 95% confident that the number of airline passengers will be between 399,415 (e^.599 * 1000) and 468,717 (e^6.15 * 1000). Our best estimate is 432,681 (e^6.07 * 1000) passengers.
+In 1 year, we are 95% confident that the median home sale price will be between $387,759 (e^12.86814) and $468,321 (e^13.05691). Our best estimate is $426,142 (e^12.96253).
+
+In 5 years, we are 95% confident that the median home sale price will be between $419,048 (e^12.94574) and $669,482 (e^13.41426). Our best estimate is $529,665 (e^13.18).
 
 ```{r}
 
+# Fit with MLE estimates, using all data, forecasting ahead 1 year
+fit.mle.sig_h4_ahead = fore.sigplusnoise.wge(log.mhp, linear = TRUE, method = 'mle', freq = 0, max.p = 6, n.ahead = 4, lastn = FALSE)
+
+# Fit with MLE estimates, using all data, forecasting ahead 5 years
+fit.mle.sig_h20_ahead = fore.sigplusnoise.wge(log.mhp, linear = TRUE, method = 'mle', freq = 0, max.p = 6, n.ahead = 20, lastn = FALSE)
+
 # Checking if models all have same intercept, slope, and phis
-fit.mle.sig_notTT$b0hat == fit.mle.sig_h4$b0hat
-fit.mle.sig_notTT$b1hat == fit.mle.sig_h4$b1hat
-fit.mle.sig_notTT$phi.z == fit.mle.sig_h4$phi.z
+fit.mle.sig_notTT$b0hat == fit.mle.sig_h4_ahead$b0hat
+fit.mle.sig_notTT$b1hat == fit.mle.sig_h4_ahead$b1hat
+fit.mle.sig_notTT$phi.z == fit.mle.sig_h4_ahead$phi.z
 
 # Model Coefficients
 fit.mle.sig_notTT$phi.z
@@ -504,6 +587,17 @@ fit.mle.sig_notTT$b0hat
 fit.mle.sig_notTT$b1hat
 fit.mle.sig_notTT$wnv
 
+# Confidence Intervals
+
+# 1 Year
+fit.mle.sig_h4_ahead$ll[4]
+fit.mle.sig_h4_ahead$ul[4]
+fit.mle.sig_h4_ahead$f[4]
+
+# 5 Years
+fit.mle.sig_h20_ahead$ll[20]
+fit.mle.sig_h20_ahead$ul[20]
+fit.mle.sig_h20_ahead$f[20]
 ```
 
 
