@@ -270,4 +270,196 @@ hor.pred.long = f$f
 
 ################################################################################
 
-# 
+# Housing units completed
+x = fed_housing_data$Housing_Units_Completed 
+plotts.sample.wge(x)
+d = artrans.wge(x,1)
+l = length(x)
+
+# ARMA
+aic5.ar.wge(x,p=0:120,type='aic',method='burg') # 116 best, 120 highest
+aic5.ar.wge(x,p=0:120,type='bic',method='burg') # 1 best, 5 highest
+aic5.wge(x,p=0:8,q=0:2,type='aic') # 8/2 best, p 8 highest, q 2 highest
+aic5.wge(x,p=0:10,q=0:4,type='aic') # 10/0 best, p 10 highest, q 1 highest
+aic5.wge(x,p=0:12,q=0:3,type='aic') # 10/0 best, p 10 highest, q 1 highest
+# p    q        aic
+# 10    0   9.024872
+# 9    0   9.025447
+# 9    1   9.028069
+# 8    0   9.028335
+# 8    1   9.032021
+aic5.wge(x,p=0:10,q=0:1,type='aicc') # 9/0 best, p 10 highest, q 1 highest
+aic5.wge(x,p=0:10,q=0:1,type='bic') # 1/0 best, p 4 highest, q 1 highest
+# candidates: 10/0, 1/0
+
+# AR(10)
+dev.off()
+est = est.ar.wge(x,p=10)
+roll.win.rmse.wge(x,h.short,phi=est$phi) # 107.492
+roll.win.rmse.wge(x,h.long,phi=est$phi) # 237.179
+f = fore.arima.wge(x,phi=est$phi,n.ahead=h.short,lastn=TRUE)
+ase = mean((x[(l-h.short+1):l]-f$f)^2)/1e3
+ase # 12.98288
+f = fore.arima.wge(x,phi=est$phi,n.ahead=h.long,lastn=TRUE)
+ase = mean((x[(l-h.long+1):l]-f$f)^2)/1e3
+ase # 8.546039
+
+# AR(1)
+est = est.ar.wge(x,p=2)
+roll.win.rmse.wge(x,h.short,phi=est$phi) # 116.71
+roll.win.rmse.wge(x,h.long,phi=est$phi) # 258.693
+f = fore.arima.wge(x,phi=est$phi,n.ahead=h.short,lastn=TRUE)
+ase = mean((x[(l-h.short+1):l]-f$f)^2)/1e3
+ase # 19.65468
+f = fore.arima.wge(x,phi=est$phi,n.ahead=h.long,lastn=TRUE)
+ase = mean((x[(l-h.long+1):l]-f$f)^2)/1e3
+ase # 10.37798
+
+# ARMA(9,1)
+est = est.arma.wge(x,p=9,q=1)
+roll.win.rmse.wge(x,h.short,phi=est$phi,theta=est$theta) # 106.605
+roll.win.rmse.wge(x,h.long,phi=est$phi,theta=est$theta) # 235.69
+f = fore.arima.wge(x,phi=est$phi,theta=est$theta,n.ahead=h.short,lastn=TRUE)
+ase = mean((x[(l-h.short+1):l]-f$f)^2)/1e3
+ase # 13.44075
+f = fore.arima.wge(x,phi=est$phi,theta=est$theta,n.ahead=h.long,lastn=TRUE)
+ase = mean((x[(l-h.long+1):l]-f$f)^2)/1e3
+ase # 8.516217
+
+# ARIMA(p,1,q)
+aic5.ar.wge(d,p=0:160,type='aic',method='burg') # 160 best, 160 highest
+aic5.ar.wge(d,p=0:160,type='bic',method='burg') # 0 best, 4 highest
+aic5.wge(d,p=0:6,q=0:2,type='aic') # 2/1 best, p 4 highest, q 2 highest
+aic5.wge(d,p=0:6,q=0:4,type='aic') # 2/1 best, p 4 highest, q 2 highest
+# p    q        aic
+# 2    1   9.084278
+# 3    0   9.084565
+# 1    2   9.088551
+# 3    1   9.088634
+# 4    0   9.090280
+aic5.wge(d,p=0:4,q=0:2,type='aicc') # 2/1 best, p 4 highest, q 2 highest
+aic5.wge(d,p=0:4,q=0:2,type='bic') # 0/0 best, p 2 highest, q 2 highest
+# candidates: 2/1, 3/1
+
+# ARIMA(2,1,1)
+est = est.arma.wge(d,p=2,q=1)
+roll.win.rmse.wge(x,h.short,d=1,phi=est$phi,theta=est$theta) # 119.763
+roll.win.rmse.wge(x,h.long,d=1,phi=est$phi,theta=est$theta) # 314.594
+f = fore.arima.wge(x,d=1,phi=est$phi,theta=est$theta,n.ahead=h.short,lastn=TRUE)
+ase = mean((x[(l-h.short+1):l]-f$f)^2)/1e3
+ase # 16.2009
+f = fore.arima.wge(x,d=1,phi=est$phi,theta=est$theta,n.ahead=h.long,lastn=TRUE)
+ase = mean((x[(l-h.long+1):l]-f$f)^2)/1e3
+ase # 8.137481
+
+# ARIMA(3,1,1)
+est = est.arma.wge(d,p=3,q=1)
+roll.win.rmse.wge(x,h.short,d=1,phi=est$phi,theta=est$theta) # 116.348
+roll.win.rmse.wge(x,h.long,d=1,phi=est$phi,theta=est$theta) # 308.772
+f = fore.arima.wge(x,d=1,phi=est$phi,theta=est$theta,n.ahead=h.short,lastn=TRUE)
+ase = mean((x[(l-h.short+1):l]-f$f)^2)/1e3
+ase # 16.36543
+f = fore.arima.wge(x,d=1,phi=est$phi,theta=est$theta,n.ahead=h.long,lastn=TRUE)
+ase = mean((x[(l-h.long+1):l]-f$f)^2)/1e3
+ase # 8.160344
+
+# MLP
+# d= 0, 5 hidden nodes
+set.seed(7)
+t.train.short= 1:(l-h.short)
+t.test.short=(l-h.short+1):l
+t.train.long= 1:(l-h.long)
+t.test.long=(l-h.long+1):l
+train.short = x[t.train.short]
+test.short = x[t.test.short]
+train.long = x[t.train.long]
+test.long = x[t.test.long]
+fit.mlp = mlp(ts(x))
+plot(fit.mlp)
+roll.win.rmse.nn.wge(x,horizon=h.short,fit.mlp) # 109.389
+roll.win.rmse.nn.wge(x,horizon=h.long,fit.mlp) # 223.535
+fit.mlp = mlp(ts(train.short))
+fore.mlp=forecast(fit.mlp,h=h.short)
+plot(seq(1,l,1),x,type="b")
+points(seq(l-h.short+1,l,1),fore.mlp$mean,type="b",pch=15)
+plot(fore.mlp)
+ase=mean((test.short-fore.mlp$mean)^2)/1e3
+ase # 15.86988
+fit.mlp = mlp(ts(train.long))
+fore.mlp=forecast(fit.mlp,h=h.long)
+plot(seq(1,l,1),x,type="b")
+points(seq(l-h.long+1,l,1),fore.mlp$mean,type="b",pch=15)
+plot(fore.mlp)
+ase=mean((test.long-fore.mlp$mean)^2)/1e3
+ase # 16.79112
+
+# d= 0, 2 hidden nodes
+set.seed(8)
+fit.mlp = mlp(ts(x),hd=2)
+plot(fit.mlp)
+roll.win.rmse.nn.wge(x,horizon=h.short,fit.mlp) # 110.592
+roll.win.rmse.nn.wge(x,horizon=h.long,fit.mlp) # 226.479
+fit.mlp = mlp(ts(train.short),hd=2)
+fore.mlp=forecast(fit.mlp,h=h.short)
+plot(seq(1,l,1),x,type="b")
+points(seq(l-h.short+1,l,1),fore.mlp$mean,type="b",pch=15)
+plot(fore.mlp)
+ase=mean((test.short-fore.mlp$mean)^2)/1e3
+ase # 15.79413
+fit.mlp = mlp(ts(train.long),hd=2)
+fore.mlp=forecast(fit.mlp,h=h.long)
+plot(seq(1,l,1),x,type="b")
+points(seq(l-h.long+1,l,1),fore.mlp$mean,type="b",pch=15)
+plot(fore.mlp)
+ase=mean((test.long-fore.mlp$mean)^2)/1e3
+ase # 17.86414
+
+# d= 1, 5 hidden nodes
+set.seed(9)
+fit.mlp = mlp(ts(x),difforder=1)
+plot(fit.mlp)
+roll.win.rmse.nn.wge(x,horizon=h.short,fit.mlp) # 105.802
+roll.win.rmse.nn.wge(x,horizon=h.long,fit.mlp) # 289.21
+fit.mlp = mlp(ts(train.short),difforder=1)
+fore.mlp=forecast(fit.mlp,h=h.short)
+plot(seq(1,l,1),x,type="b")
+points(seq(l-h.short+1,l,1),fore.mlp$mean,type="b",pch=15)
+plot(fore.mlp)
+ase=mean((test.short-fore.mlp$mean)^2)/1e3
+ase # 12.4386
+fit.mlp = mlp(ts(train.long),difforder=1)
+fore.mlp=forecast(fit.mlp,h=h.long)
+plot(seq(1,l,1),x,type="b")
+points(seq(l-h.long+1,l,1),fore.mlp$mean,type="b",pch=15)
+plot(fore.mlp)
+ase=mean((test.long-fore.mlp$mean)^2)/1e3 
+ase # 16.29619
+
+# d= 1, 2 hidden nodes
+set.seed(10)
+fit.mlp = mlp(ts(x),difforder=1,hd=2)
+plot(fit.mlp)
+roll.win.rmse.nn.wge(x,horizon=h.short,fit.mlp) # 111.548
+roll.win.rmse.nn.wge(x,horizon=h.long,fit.mlp) # 293.12
+fit.mlp = mlp(ts(train.short),difforder=1,hd=2)
+fore.mlp=forecast(fit.mlp,h=h.short)
+plot(seq(1,l,1),x,type="b")
+points(seq(l-h.short+1,l,1),fore.mlp$mean,type="b",pch=15)
+plot(fore.mlp)
+ase=mean((test.short-fore.mlp$mean)^2)/1e3
+ase # 14.3813
+fit.mlp = mlp(ts(train.long),difforder=1,hd=2)
+fore.mlp=forecast(fit.mlp,h=h.long)
+plot(seq(1,l,1),x,type="b")
+points(seq(l-h.long+1,l,1),fore.mlp$mean,type="b",pch=15)
+plot(fore.mlp)
+ase=mean((test.long-fore.mlp$mean)^2)/1e3 
+ase # 16.36875
+
+# Will officially go with ARMA(9,1) predictions
+x = fed_housing_data$Housing_Units_Completed  
+est = est.arma.wge(x,p=9,q=1)
+f = fore.arima.wge(x,phi=est$phi,theta=est$theta,n.ahead=h.short,lastn=TRUE)
+huc.pred.short = f$f
+f = fore.arima.wge(x,phi=est$phi,theta=est$theta,n.ahead=h.long,lastn=TRUE)
+huc.pred.long = f$f
