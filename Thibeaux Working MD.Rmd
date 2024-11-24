@@ -11,14 +11,14 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Libraries
 
-```{r}
+```{r, message=FALSE, "Load Libraries"}
 library(tidyverse)
 library(tswge)
 library(vars)
-library(zoo)
+library(lubridate)
 ```
 # Load Data
-```{r}
+```{r Load and wrangle data}
 
 # Variable of Interest - Quarterly from 1/1/63
 file_path = "https://raw.githubusercontent.com/aabromowitz/TimeSeriersProject/refs/heads/main/MSPUS.csv"
@@ -48,54 +48,68 @@ huc_monthly <- huc
 
 # Supply of New Houses Variable 
 snh$DATE = as.Date(snh$DATE)
-snh$qdate <- as.yearqtr(snh$DATE)
+snh$month <- month(snh$DATE)
 head(snh)
 snh_quarterly <- snh %>%
-  group_by(qdate) %>%
-  summarise_all(mean)
+  filter(snh$month == 1 | snh$month == 4 | snh$month == 7 | snh$month == 10)
+summary(snh_quarterly)
 
 # Housing Units Completed Variable
 huc$DATE = as.Date(huc$DATE)
-huc$qdate <- as.yearqtr(huc$DATE)
+huc$month <- month(huc$DATE)
 head(huc)
 huc_quarterly <- huc %>%
-  group_by(qdate) %>%
-  summarise_all(mean)
+  filter(huc$month == 1 | huc$month == 4 | huc$month == 7 | huc$month == 10)
+summary(huc_quarterly)
 
 # Using same time frames, which would be starting at 1975 Q1 and ending at 2024 Q2 (due to hpi data)
 
 # hor observation 41 is 1975 Q1
 hor_1975 = hor[41:238,]
+hor_1975$DATE <- as.Date(hor_1975$DATE)
+summary(hor_1975)
 
 # huc_quarterlly observation 29
 huc_1975 = huc_quarterly[29:226,]
+summary(huc_1975)
 
 # mhp observation 49 is 1975 Q1
 mhp_1975 = mhp[49:246,]
+mhp_1975$DATE <- as.Date(mhp_1975$DATE)
+summary(mhp_1975)
 
 # snh_quarterly observation 49 is 1975 Q1
 snh_1975 = snh_quarterly[49:246,]
+summary(snh_1975)
+
+# Housing Price Index variable already from 1975 Q1 - 2024 Q2
+hpi$DATE <- as.Date(hpi$DATE)
+summary(hpi)
 
 # Create Dataframe
-# Combined (Train/Test) Set
-fed_housing_data = data.frame(Year_Quarter = as.Date(mhp_1975$DATE), Ownership_Rate = hor_1975$RHORUSQ156N, Housing_Units_Completed = huc_1975$COMPUTSA, Supply_New_Houses = snh_1975$MSACSR, Housing_Price_Index = hpi$USSTHPI, Median_Sales_Price = mhp_1975$MSPUS)
+# Combined (Train/Test) Set NOT LOGGED
+fed_housing_data_NL = data.frame(Year_Quarter = mhp_1975$DATE, Ownership_Rate = hor_1975$RHORUSQ156N, Housing_Units_Completed = huc_1975$COMPUTSA, Supply_New_Houses = snh_1975$MSACSR, Housing_Price_Index = hpi$USSTHPI, Median_Sales_Price = mhp_1975$MSPUS)
 
-# Train
+# Combined (Train/Test) Set LOGGED
+fed_housing_data = data.frame(Year_Quarter = as.Date(mhp_1975$DATE), Ownership_Rate = hor_1975$RHORUSQ156N, Housing_Units_Completed = huc_1975$COMPUTSA, Supply_New_Houses = snh_1975$MSACSR, Housing_Price_Index = hpi$USSTHPI, Median_Sales_Price = log(mhp_1975$MSPUS))
+
+# Train & Test sets
 train = fed_housing_data[1:168,]
 test = fed_housing_data[169:198,]
 
-head(fed_housing_data)
+summary(fed_housing_data)
 ```
 
 # Signal Plus Noise Model
-
-```{r}
+### Test for linear Trend
+```{r Test for linear trend}
 # Testing for Linear Trend
 t = 1:198
 reg = slr.wge(train$Median_Sales_Price)
 
 # Cochran Orcutt Test for Linear Trend
-co.wge(train$Median_Sales_Price)
+co_test_msp = co.wge(train$Median_Sales_Price)
+co_test_msp$pvalue
 
 # WBG Test
 wbg.boot.wge(train$Median_Sales_Price)
@@ -107,12 +121,17 @@ points(fit, type = "l")
 
 # Examine Residuals
 resid = train$Median_Sales_Price - fit
-plot(resid, type = "p")
+plot(resid, type = "l")
 abline(h=0)
 # Residuals look different than the residuals for the combined (train/test) set.
 
 # Quicker way to plot residuals: plot(reg$res, type = "l")
+```
 
+Null hypothesis rejected in all tests (Note: Barely rejects hypothesis with WBG test)
+
+### Models
+```{r Signal Plus Noise models}
 # Fit a signal plus noise
 # Burg Estimates
 spn.b.aic = aic.burg.wge(reg$res, p = 1:5)
@@ -123,26 +142,15 @@ spn.mle.aic # p = 2, q = 2
 
 fit.sig = fore.sigplusnoise.wge(train$Median_Sales_Price, linear = TRUE, n.ahead = 30)
 
+plot(fit.sig$resid)
+
 # ASE
 ASE = mean((test$Median_Sales_Price - fit.sig$f)^2)
-ASE # ASE is 4731133476 (4.73B)
+ASEexp = mean((exp(test$Median_Sales_Price) - exp(fit.sig$f))^2)
+ASEexp
 
 # Aaron's Rolling Window RMSE Code
-log.mhp = log(fed_housing_data$Median_Sales_Price)
-series = log.mhp
-horizon = 12
-source("functions_Aaron.R")
-roll.win.sigplusnoise.ada(series, horizon)
-
-# If you wanted to use all the fore.sigplusnoise.wge parameters, it would look something like this:
-series = log.mhp
-horizon = 12
-linear = TRUE
-method = "mle"
-freq=0
-max.p=5
-roll.win.sigplusnoise.ada (series, horizon, linear = linear, method = method, freq=freq, max.p=max.p)
-
-# Average RMSE is 0.07954558
-
 ```
+
+
+
