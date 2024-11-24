@@ -9,22 +9,176 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+# Libraries
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+```{r, message=FALSE, "Load Libraries"}
+library(tidyverse)
+library(tswge)
+library(vars)
+library(lubridate)
 ```
 
-## Including Plots
+# Load Data
+```{r Load and wrangle data}
 
-You can also embed plots, for example:
+# Variable of Interest - Quarterly from 1/1/63
+file_path = "https://raw.githubusercontent.com/aabromowitz/TimeSeriersProject/refs/heads/main/MSPUS.csv"
+mhp <- read.csv(file_path, header = TRUE)
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+# Home ownership rate - Quarterly from 1/1/65
+file_path = "https://raw.githubusercontent.com/aabromowitz/TimeSeriersProject/refs/heads/main/RHORUSQ156N.csv"
+hor <- read.csv(file_path, header = TRUE)
+
+# Housing units completed - Monthly from 1/1/1968
+file_path = "https://raw.githubusercontent.com/aabromowitz/TimeSeriersProject/refs/heads/main/COMPUTSA.csv"
+huc <- read.csv(file_path, header = TRUE)
+
+# Supply of new houses - Monthly from 1/1/1963
+file_path = "https://raw.githubusercontent.com/aabromowitz/TimeSeriersProject/refs/heads/main/MSACSR.csv"
+snh <- read.csv(file_path, header = TRUE)
+
+# House price index - Quarterly from 1/1/1975
+file_path = "https://raw.githubusercontent.com/aabromowitz/TimeSeriersProject/refs/heads/main/USSTHPI.csv"
+hpi <- read.csv(file_path, header = TRUE)
+
+# Converting Monthly Data to Quarterly Data
+
+# Preserve Monthly format
+snh_monthly <- snh
+huc_monthly <- huc
+
+# Supply of New Houses Variable 
+snh$DATE = as.Date(snh$DATE)
+snh$month <- month(snh$DATE)
+head(snh)
+snh_quarterly <- snh %>%
+  filter(snh$month == 1 | snh$month == 4 | snh$month == 7 | snh$month == 10)
+summary(snh_quarterly)
+
+# Housing Units Completed Variable
+huc$DATE = as.Date(huc$DATE)
+huc$month <- month(huc$DATE)
+head(huc)
+huc_quarterly <- huc %>%
+  filter(huc$month == 1 | huc$month == 4 | huc$month == 7 | huc$month == 10)
+summary(huc_quarterly)
+
+# Using same time frames, which would be starting at 1975 Q1 and ending at 2024 Q2 (due to hpi data)
+
+# hor observation 41 is 1975 Q1
+hor_1975 = hor[41:238,]
+hor_1975$DATE <- as.Date(hor_1975$DATE)
+summary(hor_1975)
+
+# huc_quarterlly observation 29
+huc_1975 = huc_quarterly[29:226,]
+summary(huc_1975)
+
+# mhp observation 49 is 1975 Q1
+mhp_1975 = mhp[49:246,]
+mhp_1975$DATE <- as.Date(mhp_1975$DATE)
+summary(mhp_1975)
+
+# snh_quarterly observation 49 is 1975 Q1
+snh_1975 = snh_quarterly[49:246,]
+summary(snh_1975)
+
+# Housing Price Index variable already from 1975 Q1 - 2024 Q2
+hpi$DATE <- as.Date(hpi$DATE)
+summary(hpi)
+
+# Create Dataframe
+# Combined (Train/Test) Set NOT LOGGED
+fed_housing_data_NL = data.frame(Year_Quarter = mhp_1975$DATE, Ownership_Rate = hor_1975$RHORUSQ156N, Housing_Units_Completed = huc_1975$COMPUTSA, Supply_New_Houses = snh_1975$MSACSR, Housing_Price_Index = hpi$USSTHPI, Median_Sales_Price = mhp_1975$MSPUS)
+
+# Combined (Train/Test) Set LOGGED
+fed_housing_data = data.frame(Year_Quarter = as.Date(mhp_1975$DATE), Ownership_Rate = hor_1975$RHORUSQ156N, Housing_Units_Completed = huc_1975$COMPUTSA, Supply_New_Houses = snh_1975$MSACSR, Housing_Price_Index = hpi$USSTHPI, Median_Sales_Price = log(mhp_1975$MSPUS))
+
+# Train & Test sets
+train = fed_housing_data[1:168,]
+test = fed_housing_data[169:198,]
+
+summary(fed_housing_data)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+# EDA
+
+## Median Housing Sale Price
+
+Our variable of interest is the Median Housing Sale Price. This was quarterly data starting in 1965.
+
+```{r Plot Median Housing Sales Price}
+mhp=mhp$MSPUS
+plot(ts(mhp/1000, frequency=4,start=c(1965,1)),xlab='Year',ylab='Housing price (in thousands of dollars)')
+title(main='Median US Housing Price from 1965')
+acf(mhp,ylab='',main='ACF')
+x = parzen.wge(mhp)
+```
+
+The realization looks like it is increasing linearly. This data could be model with a signal plus noise, with a linear signal.
+
+The realization appears to be non stationary. There is evidence that the data is increasing over time. In addition, the variation appears much higher in later years as in earlier years, showing that variance is increasing over time as well. When modeling, it may be useful to take the logarithm of the data before modeling.
+
+The ACF shows very slowly dampening autocorrelations. The parzen window also shows a very low frequency. This could points to a (1-B) term which could be removed with a high-pass difference filter.
+
+## Home Ownership Rate
+
+We used 4 exogenous variables. The first was home ownership rate. Like the variable of interest, this was quarterly data starting from 1965.
+
+```{r Plot Home Ownership Rate}
+hor <- hor$RHORUSQ156N
+plot(ts(hor, frequency=4,start=c(1965,1)),xlab='Year',ylab='Percentage')
+title(main='Home Ownership Rate from 1965')
+acf(hor,ylab='',main='ACF')
+x = parzen.wge(hor)
+```
+
+Unlike the median house price, the home ownership rate appears to be stationary. There isn’t a linear trend to the data, and the variance seems to be constant over time.
+
+The ACF does show that there are dampening autocorrelations, but not quite at the rate as for median house price. This could point to an ARMA model being appropriate for the home ownership rate.
+
+Similar to median house price, the Parzen Window shows that 0 is a prominent frequency.
+
+## Housing Units Completed
+
+The next exogenous variable is Housing Units Completed. This was a monthly variable, starting from 1968.
+
+```{r Plot Housing Units Complete}
+huc <- huc$COMPUTSA
+plot(ts(huc, frequency=12,start=c(1968,1)),xlab='Year',ylab='')
+title(main='Housing Units Completed from 1968')
+acf(huc,ylab='',main='ACF')
+x = parzen.wge(huc)
+```
+
+This has very similar characteristics to home ownership rate. It’s autocorrelations dampen a little more slowly, but the ACF and Parzen Window look very similar. This variable likewise shows evidence for being stationary.
+
+## Supply of New Houses
+
+```{r Plot Supply of New Houses}
+snh <- snh$MSACSR
+plot(ts(snh, frequency=12,start=c(1963,1)),xlab='Year',ylab='')
+title(main='Supply of New Houses from 1963')
+acf(snh,ylab='',main='ACF')
+x = parzen.wge(snh)
+```
+
+Similar to home ownership rate as well, but with even more quickly dampening autocorrelations. This variable likewise shows evidence for being stationary.
+
+## House Price Index
+
+The next exogenous variable is House Price Index. This was a quarterly variable, starting from 1975.
+
+```{r Plot House Price Index}
+hpi <- hpi$USSTHPI
+plot(ts(hpi, frequency=4,start=c(1975,1)),xlab='Year',ylab='')
+title(main='House Price Index from 1975')
+acf(hpi,ylab='',main='ACF')
+x = parzen.wge(hpi)
+```
+
+The realization has a similar upward trend to the Housing Sale Price. It seems very smooth though, very little variance. Because of the upward trend though, it shows evidence against stationarity.
+
+The ACF and Parzen Window are also similar to those of Housing Sale Price.
+
+Not all the data matches up by date range or by frequency of observation (monthly vs quarterly).  To make everything consistent, we will only use quarterly data going from Q1 1975 to Q2 2024.
