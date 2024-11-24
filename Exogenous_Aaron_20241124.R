@@ -261,6 +261,7 @@ ase=mean((test.long-fore.mlp$mean)^2)
 ase # 3.059631
 
 # Will officially go with ARMA(9,1) predictions
+x = fed_housing_data$Ownership_Rate 
 est = est.arma.wge(x,p=9,q=1)
 f = fore.arima.wge(x,phi=est$phi,theta=est$theta,n.ahead=h.short,lastn=TRUE)
 hor.pred.short = f$f
