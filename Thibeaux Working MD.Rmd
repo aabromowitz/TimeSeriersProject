@@ -132,24 +132,378 @@ Null hypothesis rejected in all tests (Note: Barely rejects hypothesis with WBG 
 
 ### Models
 ```{r Signal Plus Noise models}
-# Fit a signal plus noise
-# Burg Estimates
-spn.b.aic = aic.burg.wge(reg$res, p = 1:5)
-spn.b.aic # p = 5
+# Fit signal plus noise models
 
-spn.mle.aic = aic.wge(reg$res, p = 0:5, q = 0:2)
-spn.mle.aic # p = 2, q = 2
+# MLE Estimates with AIC
+spn.mle.aic = aic.ar.wge(reg$res, type = 'aic', p = 0:7)
+spn.mle.aic # ar(6), aic -7.269686
 
-fit.sig = fore.sigplusnoise.wge(train$Median_Sales_Price, linear = TRUE, n.ahead = 30)
+# MLE Estimates with AICC
+spn.mle.aicc = aic.ar.wge(reg$res, type = 'aicc', p = 0:7)
+spn.mle.aicc # ar(6), aicc -6.25239
 
-plot(fit.sig$resid)
+# MLE Estimates with BIC
+spn.mle.bic = aic.ar.wge(reg$res, type = 'bic', p = 0:7)
+spn.mle.bic # ar(2), bic -7.147245
 
-# ASE
-ASE = mean((test$Median_Sales_Price - fit.sig$f)^2)
-ASEexp = mean((exp(test$Median_Sales_Price) - exp(fit.sig$f))^2)
-ASEexp
+# Burg Estimates with AIC
+spn.b.aic = aic.burg.wge(reg$res, p = 1:7, type = 'aic')
+spn.b.aic # ar(6), aic -7.278742
 
+# Burg Estimates with AICC
+spn.b.aicc = aic.burg.wge(reg$res, p = 1:7, type = 'aicc')
+spn.b.aicc # ar(6), aicc -6.261446
+
+# Burg Estimates with BIC
+spn.b.bic = aic.burg.wge(reg$res, p = 1:7, type = 'bic')
+spn.b.bic # ar(6), bic -7.157681
+
+# Create table for comparison
+labels = c("aic", "aicc", "bic")
+mle.ests = c(spn.mle.aic$value, spn.mle.aicc$value, spn.mle.bic$value)
+burg.ests = c(spn.b.aic$value, spn.b.aicc$value, spn.b.bic$value)
+comparison = data.frame(labels,mle.ests,burg.ests)
+comparison
+
+# MLE estimates are better for all types: aic, aicc, bic
+
+# Fit with MLE estimates, train/test set
+fit.mle.sig = fore.sigplusnoise.wge(train$Median_Sales_Price, linear = TRUE, method = 'mle', freq = 0, max.p = 6, n.ahead = 30)
+fit.mle.sig$b0hat
+fit.mle.sig$b1hat
+
+# Different Plot
+log.mhp = fed_housing_data$Median_Sales_Price
+plot(log.mhp, type = 'l')
+lines(seq(169,198,1), fit.mle.sig$f, col = "blue")
+
+# Examine residuals
+plot(fit.mle.sig$resid)
+
+# ASE with MLE estimates
+ASE = mean((test$Median_Sales_Price - fit.mle.sig$f)^2)
+ASEexp = mean((exp(test$Median_Sales_Price) - exp(fit.mle.sig$f))^2)
+ASEexp # 826.5M
+
+# Fit with burg estimates, train/test set
+fit.b.sig = fore.sigplusnoise.wge(train$Median_Sales_Price, linear = TRUE, method = 'burg', freq = 0, max.p = 6, n.ahead = 30)
+fit.b.sig$b0hat
+fit.b.sig$b1hat
+
+# Different Plot
+plot(log.mhp, type = 'l')
+lines(seq(169,198,1), fit.b.sig$f, col = "blue")
+
+# Examine residuals
+plot(fit.b.sig$resid)
+
+# ASE with Burg estimates
+ASE.b = mean((test$Median_Sales_Price - fit.b.sig$f)^2)
+ASE.b.exp = mean((exp(test$Median_Sales_Price) - exp(fit.b.sig$f))^2)
+ASE.b.exp # 1.11B
+
+# MLE estimates are better than Burg estimates, as expected
+ASEexp < ASE.b.exp
+```
+### Signal Plus Noise using all data
+```{r}
+# Making sure log.mhp is the correct data
+log.mhp = fed_housing_data$Median_Sales_Price
+
+# Fit with MLE estimates, using all data
+fit.mle.sig_notTT = fore.sigplusnoise.wge(log.mhp, linear = TRUE, method = 'mle', freq = 0, max.p = 6, n.ahead = 30, lastn = TRUE)
+fit.mle.sig_notTT$b0hat
+fit.mle.sig_notTT$b1hat
+fit.mle.sig_notTT$phi.z
+
+# Different Plot
+plot(log.mhp, type = 'l')
+lines(seq(169,198,1), fit.mle.sig_notTT$f, col = "blue")
+
+# Examine residuals
+plot(fit.mle.sig$resid)
+
+# ASE with MLE estimates
+ASE.full = mean((log.mhp[169:198] - fit.mle.sig_notTT$f)^2)
+ASEexp.full = mean((exp(log.mhp[169:198]) - exp(fit.mle.sig_notTT$f))^2)
+ASEexp.full # 595M
+
+# Fit with burg estimates, using all data
+fit.b.sig_notTT = fore.sigplusnoise.wge(log.mhp, linear = TRUE, method = 'burg', freq = 0, max.p = 6, n.ahead = 30, lastn = TRUE)
+fit.b.sig_notTT$b0hat
+fit.b.sig_notTT$b1hat
+fit.b.sig_notTT$phi.z
+
+# Different Plot
+plot(log.mhp, type = 'l')
+lines(seq(169,198,1), fit.b.sig_notTT$f, col = "blue")
+
+# Examine residuals
+plot(fit.b.sig_notTT$resid)
+
+# ASE with Burg estimates
+ASE.b.full = mean((log.mhp[169:198] - fit.b.sig_notTT$f)^2)
+ASE.b.exp.full = mean((exp(log.mhp[169:198]) - exp(fit.b.sig_notTT$f))^2)
+ASE.b.exp.full # 658M
+
+# Burg estimates worse than ASE as expected
+ASEexp.full < ASE.b.exp.full
+
+```
+
+### Signal Plus Noise using 1 Yr Horizon
+```{r}
+# Making sure log.mhp is the correct data
+log.mhp = fed_housing_data$Median_Sales_Price
+
+# Fit with MLE estimates, using all data
+fit.mle.sig_h4 = fore.sigplusnoise.wge(log.mhp, linear = TRUE, method = 'mle', freq = 0, max.p = 6, n.ahead = 4, lastn = TRUE)
+fit.mle.sig_h4$b0hat
+fit.mle.sig_h4$b1hat
+
+# Different Plot
+plot(log.mhp, type = 'l')
+lines(seq(195,198,1), fit.mle.sig_h4$f, col = "blue")
+
+# Examine residuals
+plot(fit.mle.sig_h4$resid)
+
+# ASE with MLE estimates
+ASE.h4 = mean((log.mhp[195:198] - fit.mle.sig_h4$f)^2)
+ASEexp.h4 = mean((exp(log.mhp[195:198]) - exp(fit.mle.sig_h4$f))^2)
+ASEexp.h4 # 50.92M
+
+# Fit with burg estimates, using all data
+fit.b.sig_h4 = fore.sigplusnoise.wge(log.mhp, linear = TRUE, method = 'burg', freq = 0, max.p = 6, n.ahead = 4, lastn = TRUE)
+fit.b.sig_h4$b0hat
+fit.b.sig_h4$b1hat
+
+# Different Plot
+plot(log.mhp, type = 'l')
+lines(seq(195,198,1), fit.b.sig_h4$f, col = "blue")
+
+# Examine residuals
+plot(fit.b.sig_h4$resid)
+
+# ASE with Burg estimates
+ASE.b.h4 = mean((log.mhp[195:198] - fit.b.sig_h4$f)^2)
+ASE.b.exp.h4 = mean((exp(log.mhp[195:198]) - exp(fit.b.sig_h4$f))^2)
+ASE.b.exp.h4 # 54.75M
+
+# Burg estimates worse than ASE as expected
+ASEexp.h4 < ASE.b.exp.h4
+
+```
+### Signal Plus Noise using 3 Yr Horizon
+```{r}
+# Making sure log.mhp is the correct data
+log.mhp = fed_housing_data$Median_Sales_Price
+
+# Fit with MLE estimates, using all data
+fit.mle.sig_h12 = fore.sigplusnoise.wge(log.mhp, linear = TRUE, method = 'mle', freq = 0, max.p = 6, n.ahead = 12, lastn = TRUE)
+fit.mle.sig_h12$b0hat
+fit.mle.sig_h12$b1hat
+
+# Different Plot
+plot(log.mhp, type = 'l')
+lines(seq(187,198,1), fit.mle.sig_h12$f, col = "blue")
+
+# Examine residuals
+plot(fit.mle.sig_h12$resid)
+
+# ASE with MLE estimates
+ASE.h12 = mean((log.mhp[187:198] - fit.mle.sig_h12$f)^2)
+ASEexp.h12 = mean((exp(log.mhp[187:198]) - exp(fit.mle.sig_h12$f))^2)
+ASEexp.h12 # 620.35M
+
+# Fit with burg estimates, using all data
+fit.b.sig_h12 = fore.sigplusnoise.wge(log.mhp, linear = TRUE, method = 'burg', freq = 0, max.p = 6, n.ahead = 12, lastn = TRUE)
+fit.b.sig_h12$b0hat
+fit.b.sig_h12$b1hat
+
+# Different Plot
+plot(log.mhp, type = 'l')
+lines(seq(187,198,1), fit.b.sig_h12$f, col = "blue")
+
+# Examine residuals
+plot(fit.b.sig_h12$resid)
+
+# ASE with Burg estimates
+ASE.b.h12 = mean((log.mhp[187:198] - fit.b.sig_h12$f)^2)
+ASE.b.exp.h12 = mean((exp(log.mhp[187:198]) - exp(fit.b.sig_h12$f))^2)
+ASE.b.exp.h12 # 621.99M
+
+# Burg estimates worse ASE though
+ASEexp.h12 < ASE.b.exp.h12
+```
+### Signal Plus Noise using 5 Yr Horizon
+```{r}
+# Making sure log.mhp is the correct data
+log.mhp = fed_housing_data$Median_Sales_Price
+
+# Fit with MLE estimates, using all data
+fit.mle.sig_h20 = fore.sigplusnoise.wge(log.mhp, linear = TRUE, method = 'mle', freq = 0, max.p = 6, n.ahead = 20, lastn = TRUE)
+fit.mle.sig_h20$b0hat
+fit.mle.sig_h20$b1hat
+
+# Different Plot
+plot(log.mhp, type = 'l')
+lines(seq(179,198,1), fit.mle.sig_h20$f, col = "blue")
+
+# Examine residuals
+plot(fit.mle.sig_h20$resid)
+
+# ASE with MLE estimates
+ASE.h20 = mean((log.mhp[179:198] - fit.mle.sig_h20$f)^2)
+ASEexp.h20 = mean((exp(log.mhp[179:198]) - exp(fit.mle.sig_h20$f))^2)
+ASEexp.h20 # 50.92M
+
+# Fit with burg estimates, using all data
+fit.b.sig_h20 = fore.sigplusnoise.wge(log.mhp, linear = TRUE, method = 'burg', freq = 0, max.p = 6, n.ahead = 20, lastn = TRUE)
+fit.b.sig_h20$b0hat
+fit.b.sig_h20$b1hat
+
+# Different Plot
+plot(log.mhp, type = 'l')
+lines(seq(179,198,1), fit.b.sig_h20$f, col = "blue")
+
+# Examine residuals
+plot(fit.b.sig_h20$resid)
+
+# ASE with Burg estimates
+ASE.b.h20 = mean((log.mhp[179:198] - fit.mle.sig_h20$f)^2)
+ASE.b.exp.h20 = mean((exp(log.mhp[179:198]) - exp(fit.mle.sig_h20$f))^2)
+ASE.b.exp.h20 # 54.75M
+
+# Burg estimates worse ASE though
+ASEexp.h20 < ASE.b.exp.h20
+```
+
+```{r Rolling Window RMSE, error = F}
 # Aaron's Rolling Window RMSE Code
+
+# If you wanted to use all the fore.sigplusnoise.wge parameters, it would look something like this:
+series = log.mhp
+horizon = 12
+linear = TRUE
+method = "mle"
+freq=0
+max.p=5
+
+# Rolling Window for 1 Year Horizon with MLE
+horizon = 4
+method = "mle"
+source("functions_Aaron.R")
+mle.p0h4 = roll.win.rmse.linplusnoise.ada(series, horizon, max.p = 0) # 0.03564353
+mle.p1h4 = roll.win.rmse.linplusnoise.ada(series, horizon, max.p=1) # 0.03564353
+mle.p2h4 = roll.win.rmse.linplusnoise.ada(series, horizon, max.p=2) # 0.03547613
+mle.p3h4 = roll.win.rmse.linplusnoise.ada(series, horizon, max.p=3) # 0.03495764
+mle.p4h4 = roll.win.rmse.linplusnoise.ada(series, horizon, max.p=4) # 0.03326752
+mle.p5h4 = roll.win.rmse.linplusnoise.ada(series, horizon, max.p=5) # 0.03261551
+mle.p6h4 = roll.win.rmse.linplusnoise.ada(series, horizon, max.p=6) # 0.03259507
+mle.p7h4 = roll.win.rmse.linplusnoise.ada(series, horizon, max.p=7) # 0.03259507
+mle.p8h4 = roll.win.rmse.linplusnoise.ada(series, horizon, max.p=8) # 0.03259507
+mle.p16h4 = roll.win.rmse.linplusnoise.ada(series, horizon, max.p=16) # 0.03259507
+
+# Rolling Window for 3 Year Horizon  with MLE
+horizon = 12
+source("functions_Aaron.R")
+mle.p0h12 = roll.win.rmse.linplusnoise.ada(series, horizon, max.p = 0) # 0.0633149
+mle.p1h12 = roll.win.rmse.linplusnoise.ada(series, horizon, max.p=1) # 0.06684004
+mle.p2h12 = roll.win.rmse.linplusnoise.ada(series, horizon, max.p=2) # 0.06736302
+mle.p3h12 = roll.win.rmse.linplusnoise.ada(series, horizon, max.p=3) # 0.06736302
+mle.p4h12 = roll.win.rmse.linplusnoise.ada(series, horizon, max.p=4) # 0.0660697
+mle.p5h12 = roll.win.rmse.linplusnoise.ada(series, horizon, max.p=5) # 0.06524557
+mle.p6h12 = roll.win.rmse.linplusnoise.ada(series, horizon, max.p=6) # 0.06514193
+mle.p7h12 = roll.win.rmse.linplusnoise.ada(series, horizon, max.p=7) # 0.06514193
+mle.p8h12 = roll.win.rmse.linplusnoise.ada(series, horizon, max.p=8) # 0.06514193
+mle.p16h12 = roll.win.rmse.linplusnoise.ada(series, horizon, max.p=16) # 0.06514193
+
+# Rolling Window for 5 Year Horizon  with MLE
+horizon = 20
+source("functions_Aaron.R")
+mle.p0h20 = roll.win.rmse.linplusnoise.ada(series, horizon, max.p = 0) # 0.08107048
+mle.p1h20 = roll.win.rmse.linplusnoise.ada(series, horizon, max.p=1) # 0.08107048
+mle.p2h20 = roll.win.rmse.linplusnoise.ada(series, horizon, max.p=2) # 0.08065467
+mle.p3h20 = roll.win.rmse.linplusnoise.ada(series, horizon, max.p=3) # 0.07973718
+mle.p4h20 = roll.win.rmse.linplusnoise.ada(series, horizon, max.p=4) # 0.07797091
+mle.p5h20 = roll.win.rmse.linplusnoise.ada(series, horizon, max.p=5) # 0.07669397
+mle.p6h20 = roll.win.rmse.linplusnoise.ada(series, horizon, max.p=6) # 0.0759512
+mle.p7h20 = roll.win.rmse.linplusnoise.ada(series, horizon, max.p=7) # 0.0759512
+mle.p8h20 = roll.win.rmse.linplusnoise.ada(series, horizon, max.p=8) # 0.0759512
+mle.p16h20 = roll.win.rmse.linplusnoise.ada(series, horizon, max.p=16) # 0.0759512
+
+# Rolling Window for 1 Year Horizon with Burg Estimates
+horizon = 4
+method = "burg"
+source("functions_Aaron.R")
+burg.p0h4 = roll.win.rmse.linplusnoise.ada(series, horizon, method = 'burg', max.p = 0) # 0.03564353
+burg.p1h4 = roll.win.rmse.linplusnoise.ada(series, horizon, method = 'burg', max.p=1) # 0.03564353
+burg.p2h4 = roll.win.rmse.linplusnoise.ada(series, horizon, method = 'burg', max.p=2) # 0.03549899
+burg.p3h4 = roll.win.rmse.linplusnoise.ada(series, horizon, method = 'burg', max.p=3) # 0.03502246
+burg.p4h4 = roll.win.rmse.linplusnoise.ada(series, horizon, method = 'burg', max.p=4) # 0.03336010
+burg.p5h4 = roll.win.rmse.linplusnoise.ada(series, horizon, method = 'burg', max.p=5) # 0.03267275
+burg.p6h4 = roll.win.rmse.linplusnoise.ada(series, horizon, method = 'burg', max.p=6) # 0.03260961
+burg.p7h4 = roll.win.rmse.linplusnoise.ada(series, horizon, method = 'burg', max.p=7) # 0.03260961
+burg.p8h4 = roll.win.rmse.linplusnoise.ada(series, horizon, method = 'burg', max.p=8) # 0.03260961
+burg.p16h4 = roll.win.rmse.linplusnoise.ada(series, horizon, method = 'burg', max.p=16) # 0.03260961
+
+# Rolling Window for 3 Year Horizon  with Burg Estimates
+horizon = 12
+source("functions_Aaron.R")
+burg.p0h12 = roll.win.rmse.linplusnoise.ada(series, horizon, method = 'burg', max.p = 0) # 0.06331490
+burg.p1h12 = roll.win.rmse.linplusnoise.ada(series, horizon, method = 'burg', max.p=1) # 0.06331494
+burg.p2h12 = roll.win.rmse.linplusnoise.ada(series, horizon, method = 'burg', max.p=2) # 0.06341080
+burg.p3h12 = roll.win.rmse.linplusnoise.ada(series, horizon, method = 'burg', max.p=3) # 0.06288096
+burg.p4h12 = roll.win.rmse.linplusnoise.ada(series, horizon, method = 'burg', max.p=4) # 0.06106699
+burg.p5h12 = roll.win.rmse.linplusnoise.ada(series, horizon, method = 'burg', max.p=5) # 0.05972861
+burg.p6h12 = roll.win.rmse.linplusnoise.ada(series, horizon, method = 'burg', max.p=6) # 0.05904501
+burg.p7h12 = roll.win.rmse.linplusnoise.ada(series, horizon, method = 'burg', max.p=7) # 0.05904501
+burg.p8h12 = roll.win.rmse.linplusnoise.ada(series, horizon, method = 'burg', max.p=8) # 0.05904501
+burg.p16h12 = roll.win.rmse.linplusnoise.ada(series, horizon, method = 'burg', max.p=16) # 0.05904501
+
+# Rolling Window for 5 Year Horizon  with Burg Estimates
+horizon = 20
+source("functions_Aaron.R")
+burg.p0h20 = roll.win.rmse.linplusnoise.ada(series, horizon, method = 'burg', max.p = 0) # 0.08107047
+burg.p1h20 = roll.win.rmse.linplusnoise.ada(series, horizon, method = 'burg', max.p=1) # 0.08107047
+burg.p2h20 = roll.win.rmse.linplusnoise.ada(series, horizon, method = 'burg', max.p=2) # 0.08072611
+burg.p3h20 = roll.win.rmse.linplusnoise.ada(series, horizon, method = 'burg', max.p=3) # 0.07997433
+burg.p4h20 = roll.win.rmse.linplusnoise.ada(series, horizon, method = 'burg', max.p=4) # 0.07842355
+burg.p5h20 = roll.win.rmse.linplusnoise.ada(series, horizon, method = 'burg', max.p=5) # 0.07723106
+burg.p6h20 = roll.win.rmse.linplusnoise.ada(series, horizon, method = 'burg', max.p=6) # 0.07642582
+burg.p7h20 = roll.win.rmse.linplusnoise.ada(series, horizon, method = 'burg', max.p=7) # 0.07642582
+burg.p8h20 = roll.win.rmse.linplusnoise.ada(series, horizon, method = 'burg', max.p=8) # 0.07642582
+burg.p16h20 = roll.win.rmse.linplusnoise.ada(series, horizon, method = 'burg', max.p=16) # 0.07642582
+
+# Testing if MLE or Burg has lower RSME at p = 6 (the best p for all horizons)
+mle.p6h4 < burg.p6h4
+mle.p6h12 < burg.p6h12
+mle.p6h20 < burg.p6h20
+```
+### Model Choice
+While the burg estimates had a lower AIC than the MLE estimates, the MLE method of forecasting had better ASE and better rolling window RMSE for all three forecasts (1 yr, 3 yr, and 5 yr)
+
+Our final Signal Plus Noise Model is Xt = 10.871 + .011t + zt, where (1 - .716B - .367B2 - 0.137B3 + 0.062B4 + .076B5 + .118B5)Zt with sigma2 = 0.0006929526
+
+Wording: 
+
+In [horizon], we are 95% confident that the [measure] will be between [forecast$ll] and [forecast$ul]. Our best estimate is [forecast$f].
+Ex: In two months, we are 95% confident that the number of airline passengers will be between 399,415 (e^.599 * 1000) and 468,717 (e^6.15 * 1000). Our best estimate is 432,681 (e^6.07 * 1000) passengers.
+
+```{r}
+
+# Checking if models all have same intercept, slope, and phis
+fit.mle.sig_notTT$b0hat == fit.mle.sig_h4$b0hat
+fit.mle.sig_notTT$b1hat == fit.mle.sig_h4$b1hat
+fit.mle.sig_notTT$phi.z == fit.mle.sig_h4$phi.z
+
+# Model Coefficients
+fit.mle.sig_notTT$phi.z
+fit.mle.sig_notTT$b0hat
+fit.mle.sig_notTT$b1hat
+fit.mle.sig_notTT$wnv
+
 ```
 
 
