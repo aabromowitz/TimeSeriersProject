@@ -182,3 +182,200 @@ The realization has a similar upward trend to the Housing Sale Price. It seems v
 The ACF and Parzen Window are also similar to those of Housing Sale Price.
 
 Not all the data matches up by date range or by frequency of observation (monthly vs quarterly).  To make everything consistent, we will only use quarterly data going from Q1 1975 to Q2 2024.
+
+# AR(I)MA Model Investigation
+
+## First ARIMA Model
+
+The first model we looked at was an ARIMA model.  From the EDA, we saw that because of the increasing variance, we should look at the log of the Housing Sales Price.  And since the Parzen Window had a prominent peak at 0 and very slowly dampening autocorrelations, we should take the first difference.
+
+```{r Difference Median Housing Price}
+log.mhp = fed_housing_data$Median_Sales_Price
+mhp = exp(log.mhp)
+d.log.mhp = artrans.wge(log.mhp,1)
+```
+
+The difference looks more like white noise without an obvious pattern to the ACF.  Next we will try modeling the differenced data as an ARMA model.
+
+```{r ARIMA(p,1,q) p and q estimation}
+aic5.wge(d.log.mhp,p=0:6,q=0:2,type='aic')
+aic5.wge(d.log.mhp,p=0:6,q=0:2,type='bic')
+```
+
+Both the AIC and BIC selection choose p = 1 and q = 2.
+
+We will evaluate our models with a short term horizon of 1 year (4 quarters) and a long term horizon of 5 years (20 quarters).  We calcluated a Rolling Window RMSE for both of those horizons (using the logged data) and calculated an ASE for both of those horizons as well (taking the exponential to get back to the original data).
+
+```{r ARIMA(p,1,q) metrics}
+h.short = 4
+h.long = 20
+l = length(mhp)
+est = est.arma.wge(d.log.mhp,p=1,q=2)
+f = fore.arima.wge(log.mhp,d=1,phi=est$phi,theta=est$theta,n.ahead=h.short,lastn=TRUE)
+ase = mean((mhp[(l-h.short+1):l]-exp(f$f))^2)/1e6
+ase # 84.37902
+f = fore.arima.wge(log.mhp,d=1,phi=est$phi,theta=est$theta,n.ahead=h.long,lastn=TRUE)
+ase = mean((mhp[(l-h.long+1):l]-exp(f$f))^2)/1e6
+ase # 7091.032
+```
+```{r ARIMA(p,1,q) Rolling Window RMSE 1, fig.show='hide', results='hide'}
+r = roll.win.rmse.wge(log.mhp,h.short,d=1,phi=est$phi,theta=est$theta) # 0.036501
+```
+```{r ARIMA(p,1,q) Rolling Window RMSE 1 Output}
+r$rwRMSE
+```
+```{r ARIMA(p,1,q) Rolling Window RMSE 2, fig.show='hide', results='hide'}
+r = roll.win.rmse.wge(log.mhp,h.long,d=1,phi=est$phi,theta=est$theta) # 0.13269
+```
+```{r ARIMA(p,1,q) Rolling Window RMSE 2 Output}
+r$rwRMSE
+```
+
+For the ARIMA(1,1,2) model we get a short term Rolling Window RMSE of 0.037, a long term Rolling Window RMSE of 0.133, a short term ASE of 84.4 million and a long term ASE of 7.09 billion.
+
+## ARMA Model
+
+As a comparison, we wanted to look a simpler ARMA model.  
+
+```{r ARMA p and q estimation}
+aic5.wge(d.log.mhp,p=0:6,q=0:4,type='aic')
+aic5.wge(d.log.mhp,p=0:6,q=0:4,type='bic')
+```
+
+Both the AIC and BIC selection choose p = 2 and q = 2.
+
+```{r ARMA metrics}
+est = est.arma.wge(log.mhp,p=2,q=2)
+f = fore.arma.wge(log.mhp,phi=est$phi,theta=est$theta,n.ahead=h.short,lastn=TRUE)
+ase = mean((mhp[(l-h.short+1):l]-exp(f$f))^2)/1e6
+ase # 112.4314
+f = fore.arma.wge(log.mhp,phi=est$phi,theta=est$theta,n.ahead=h.long,lastn=TRUE)
+ase = mean((mhp[(l-h.long+1):l]-exp(f$f))^2)/1e6
+ase # 9167.59
+```
+```{r ARMA Rolling Window RMSE 1, fig.show='hide', results='hide'}
+r = roll.win.rmse.wge(log.mhp,h.short,phi=est$phi,theta=est$theta) # 0.044488
+```
+```{r ARMA Rolling Window RMSE 1 Output}
+r$rwRMSE
+```
+```{r ARMA Rolling Window RMSE 2, fig.show='hide', results='hide'}
+r = roll.win.rmse.wge(log.mhp,h.long,phi=est$phi,theta=est$theta) # 0.12779
+```
+```{r ARMA Rolling Window RMSE 2 Output}
+r$rwRMSE
+```
+
+For the ARMA(2,2) model we get a short term Rolling Window RMSE of 0.044, a long term Rolling Window RMSE of 0.128, a short term ASE of 112.4 million and a long term ASE of 9.17 billion.  Even though this model has a better long term Rolling Window RMSE than the ARIMA model, it did worse in the other metrics.
+
+## ARIMA(p,2,q) model
+
+Looking at the overfit factor table, we can see two prominent 0 frequency roots.  
+
+```{r factor table}
+est = est.ar.wge(log.mhp,p=12)
+factor.wge(phi=est$phi)
+```
+
+Even though the differenced data didn't have slowly dampening autocorrelations and looked liked white noise, the original data had a pretty clear upward trend.  We thought that this warranted investigation into an ARIMA(p,2,q) model.
+
+```{r ARIMA(p,2,q) p and q estimation}
+d2.log.mhp = artrans.wge(d.log.mhp,1)
+aic5.wge(d.log.mhp,p=0:4,q=0:2,type='aic')
+aic5.wge(d.log.mhp,p=0:4,q=0:2,type='bic')
+```
+
+Both the AIC and BIC selection choose p = 1 and q = 1.
+
+```{r ARIMA(1,2,1) metrics}
+est = est.arma.wge(d2.log.mhp,p=1,q=1)
+f = fore.arima.wge(log.mhp,d=2,phi=est$phi,theta=est$theta,n.ahead=h.short,lastn=TRUE)
+ase = mean((mhp[(l-h.short+1):l]-exp(f$f))^2)/1e6
+ase # 162.1383
+f = fore.arima.wge(log.mhp,d=2,phi=est$phi,theta=est$theta,n.ahead=h.long,lastn=TRUE)
+ase = mean((mhp[(l-h.long+1):l]-exp(f$f))^2)/1e6
+ase # 6263.556
+```
+```{r ARIMA(1,2,1) Rolling Window RMSE 1, fig.show='hide', results='hide'}
+r = roll.win.rmse.wge(log.mhp,h.short,d=2,phi=est$phi,theta=est$theta) # 0.049161
+```
+```{r ARIMA(1,2,1) Rolling Window RMSE 1 Output}
+r$rwRMSE
+```
+```{r ARIMA(1,2,1) Rolling Window RMSE 2, fig.show='hide', results='hide'}
+r = roll.win.rmse.wge(log.mhp,h.long,d=1,phi=est$phi,theta=est$theta) # 0.15465
+```
+```{r ARIMA(1,2,1) Rolling Window RMSE 2 Output}
+r$rwRMSE
+```
+
+For the ARIMA(1,2,1) model we get a short term Rolling Window RMSE of 0.049, a long term Rolling Window RMSE of 0.155, a short term ASE of 162.4 million and a long term ASE of 6.26 billion.  Even though this model had the best long term ASE so far, it did worse in the other metrics.
+
+Comparing all three ARMA/ARIMA models, we will choose the ARIMA(1,1,2).  
+
+```{r ARIMA(1,2,2) model characteristics}
+est = est.arma.wge(d.log.mhp,p=1,q=2)
+f = fore.arima.wge(log.mhp,d=1,phi=est$phi,theta=est$theta,n.ahead=h.short,lastn=TRUE)
+aic = est$aic
+aic # -7.188559
+resid = f$resid
+xbar=est$xbar
+xbar # 0.01211603
+vara = est$avar
+vara # 0.0007251235
+est$phi # 0.6901326
+est$theta # 0.9720137 -0.4007360
+```
+
+The model (for the log data) can be written as:
+(1-B)(1-0.69B)(x_t-0.012) = (1-0.972B+0.401B^2)a_t 
+$\sigma$_t^2 = 0.001
+
+Now we will look at residuals to make sure that they are white noise.
+
+```{r ARIMA(1,2,2) residual plots}
+plotts.wge(resid)
+acf(resid,lag.max=100) 
+parzen.wge(resid)
+```
+
+They appear to be white noise, and the ACF has very few values above 0.2.  We will run a Ljung-Box test to be sure.
+
+```{r ARIMA(1,2,2) Ljung test}
+ljung.wge(resid,K=24,p=1,q=2) # p = 0.2272667, white
+ljung.wge(resid,K=48,p=1,q=2) # p = 0.5584003, white
+```
+
+The test gives more evidence that the residuals are white noise.  We can also check if they are normally distributed with a histogram.
+
+```{r ARIMA(1,2,2) residual histogram}
+hist(resid)
+```
+
+We also want to make sure that the ACFs and Parzen Windows generated from ARIMA(1,2,2) models look similar to that of our original data.
+
+```{r ARIMA(1,2,2) generated ACFs and Parzen Windows}
+# Multiple ACFs 
+set.seed(2)
+sims = 10
+ACF = acf(log.mhp, plot = "FALSE")
+plot(ACF$lag ,ACF$acf , type = "l", lwd = 6)
+for( i in 1: sims)
+{
+  ACF2 = acf(gen.arima.wge(l, phi = est$phi, theta=est$theta,d=1, plot="FALSE"), plot = "FALSE")
+  lines(ACF2$lag ,ACF2$acf, lwd = 2, col = "red")
+}
+
+# Multiple Parzen 
+set.seed(3)
+sims = 10
+SpecDen = parzen.wge(log.mhp, plot = "FALSE")
+plot(SpecDen$freq,SpecDen$pzgram, type = "l", lwd = 6)
+for( i in 1: sims)
+{
+  SpecDen2 = parzen.wge(gen.aruma.wge(l,phi=est$phi, theta=est$theta,d=1, plot ="FALSE"), plot = "FALSE")
+  lines(SpecDen2$freq,SpecDen2$pzgram, lwd = 2, col = "red")
+}
+```
+
+The ACFs don't match up exactly, but have the same slowly dampening behavior.  The Parzen Windows are very close to the original.

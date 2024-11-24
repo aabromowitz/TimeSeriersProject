@@ -28,7 +28,7 @@ adf.test(log.mhp) # non-stationary
 adf.test(d.log.mhp) # stationary
 
 # overfit Factor table
-est = est.arma.wge(log.mhp,p=16)
+est = est.ar.wge(log.mhp,p=12)
 factor.wge(phi=est$phi) # two high 0 values, could be (1-B)^2
 
 # signal plus noise
@@ -131,6 +131,9 @@ f = fore.arima.wge(log.mhp,d=1,phi=est$phi,theta=est$theta,n.ahead=h.long,lastn=
 ase = mean((mhp[(l-h.long+1):l]-exp(f$f))^2)/1e6
 ase # 7091.032
 
+# Factor table
+est = est.arma.wge(log.mhp,p=16)
+
 # ARIMA(p,2,q) on log data
 d2.log.mhp = artrans.wge(d.log.mhp,1)
 aic5.wge(d2.log.mhp,p=0:16,q=0:2) # 1/1 best highest p 4 highest q 2
@@ -205,7 +208,7 @@ qqnorm(resid)
 
 # Multiple ACFs 
 set.seed(2)
-sims = 30
+sims = 15
 ACF = acf(log.mhp, plot = "FALSE")
 plot(ACF$lag ,ACF$acf , type = "l", lwd = 6)
 for( i in 1: sims)
@@ -215,7 +218,8 @@ for( i in 1: sims)
 }
 
 # Multiple Parzen 
-sims = 30
+set.seed(3)
+sims = 15
 SpecDen = parzen.wge(log.mhp, plot = "FALSE")
 plot(SpecDen$freq,SpecDen$pzgram, type = "l", lwd = 6)
 for( i in 1: sims)
@@ -223,3 +227,6 @@ for( i in 1: sims)
   SpecDen2 = parzen.wge(gen.aruma.wge(l,phi=est$phi, theta=est$theta,d=1, plot ="FALSE"), plot = "FALSE")
   lines(SpecDen2$freq,SpecDen2$pzgram, lwd = 2, col = "red")
 }
+
+ r= roll.win.rmse.wge(log.mhp,h.short,d=1,phi=est$phi)
+ 
