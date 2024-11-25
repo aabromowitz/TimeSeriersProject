@@ -83,7 +83,7 @@ roll.win.rmse.linplusnoise.ada <- function(series, horizon, method = "mle", freq
   }
   
   # For some reason, I have to remove the suppression again
-  sink()
+  # sink()
   
   # plot histogram of RMSEs
   hist(rmses)

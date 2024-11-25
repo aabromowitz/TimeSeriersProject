@@ -303,7 +303,7 @@ r = roll.win.rmse.wge(log.mhp,h.short,d=2,phi=est$phi,theta=est$theta) # 0.04916
 r$rwRMSE
 ```
 ```{r ARIMA(1,2,1) Rolling Window RMSE 2, fig.show='hide', results='hide'}
-r = roll.win.rmse.wge(log.mhp,h.long,d=1,phi=est$phi,theta=est$theta) # 0.15465
+r = roll.win.rmse.wge(log.mhp,h.long,d=2,phi=est$phi,theta=est$theta) # 0.15465
 ```
 ```{r ARIMA(1,2,1) Rolling Window RMSE 2 Output}
 r$rwRMSE
@@ -379,3 +379,8 @@ for( i in 1: sims)
 ```
 
 The ACFs don't match up exactly, but have the same slowly dampening behavior.  The Parzen Windows are very close to the original.
+
+# Exogenous Variable Forecasts
+
+In order to use the Exogenous variables in either the MLR or Multi-Variate MLP, it is more realistic to make predictions for them first.
+

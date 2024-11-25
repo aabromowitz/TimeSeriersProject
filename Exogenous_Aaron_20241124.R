@@ -46,6 +46,7 @@ train = fed_housing_data[1:168,]
 test = fed_housing_data[169:198,]
 h.short = 4
 h.long = 20
+
 ################################################################################
 
 # Model for Home Ownership rate
@@ -638,6 +639,27 @@ f2 = fore.sigplusnoise.wge(resid,linear=FALSE,freq=0.25,max.p=5,n.ahead=h.long,l
 ase = mean((x[(l-h.long+1):l]-f$f)^2)
 ase # 24824.99
 
+# Try signal plus noise for x, max.p=5
+source('functions_Aaron.R')
+roll.win.rmse.linplusnoise.ada(x,h.short,max.p=5) # 4.725118
+roll.win.rmse.linplusnoise.ada(x,h.long,max.p=5) # 22.1514
+f = fore.sigplusnoise.wge(x,max.p=5,n.ahead=h.short,lastn=TRUE)
+ase = mean((x[(l-h.short+1):l]-f$f)^2)
+ase # 100.02
+f = fore.sigplusnoise.wge(x,max.p=5,n.ahead=h.long,lastn=TRUE)
+ase = mean((x[(l-h.long+1):l]-f$f)^2)
+ase # 10746.69
+
+# signal plus noise, map.p = 10
+roll.win.rmse.linplusnoise.ada(x,h.short,max.p=10) # 4.884276
+roll.win.rmse.linplusnoise.ada(x,h.long,max.p=10) # 23.35254
+f = fore.sigplusnoise.wge(x,max.p=10,n.ahead=h.short,lastn=TRUE)
+ase = mean((x[(l-h.short+1):l]-f$f)^2)
+ase # 161.2832
+f = fore.sigplusnoise.wge(x,max.p=10,n.ahead=h.long,lastn=TRUE)
+ase = mean((x[(l-h.long+1):l]-f$f)^2)
+ase # 10014.69
+
 # MLP
 # d= 0, 5 hidden nodes
 set.seed(10)
@@ -865,3 +887,4 @@ f = fore.arima.wge(x,phi=est$phi,theta=est$theta,n.ahead=h.short,lastn=TRUE)
 snh.pred.short = f$f
 f = fore.arima.wge(x,phi=est$phi,theta=est$theta,n.ahead=h.long,lastn=TRUE)
 snh.pred.long = f$f
+
