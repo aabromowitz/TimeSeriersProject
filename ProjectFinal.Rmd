@@ -16,6 +16,7 @@ library(tidyverse)
 library(tswge)
 library(vars)
 library(lubridate)
+library(vars)
 ```
 
 # Load Data
