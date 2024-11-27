@@ -224,6 +224,7 @@ x.long$Housing_Units_Completed_l21 = dplyr::lag(x.long$Housing_Units_Completed,2
 x.long$Supply_New_Houses_l9 = dplyr::lag(x.long$Supply_New_Houses,9)
 ksfit = lm(x$Median_Sales_Price~x$Ownership_Rate+x$Housing_Units_Completed_l21+x$Supply_New_Houses_l9+x$Housing_Price_Index+t)
 summary(ksfit)
+AIC(ksfit) # -454.2937
 ksfit = lm(x$Median_Sales_Price~x$Housing_Units_Completed_l21+x$Supply_New_Houses_l9+x$Housing_Price_Index+t)
 summary(ksfit)
 AIC(ksfit) # -456.0482
@@ -302,6 +303,116 @@ fit=arima(x.long$Median_Sales_Price[t.train.long],order=c(4,0,0),xreg=cbind(t.tr
 preds = predict(fit,newxreg = data.frame(t=t.test.long,Supply_New_Houses_l14=x.long$Supply_New_Houses_l14[t.test.long]))
 ase = mean((fed_housing_data_NL$Median_Sales_Price[t.test.long]-exp(preds$pred))^2)/1e6
 ase # 2169.451
+plot(seq(1,l,1),x.long$Median_Sales_Price,type="b")
+points(seq((l-h.long+1),l,1),preds$pred,type="b",pch=15)
+
+# Try t + Supply_New_Houses_l14 + Supply_New_Houses_l5
+x = fed_housing_data
+x.short = fed_housing_data_short
+x.long = fed_housing_data_long
+x$Year_Quarter = c()
+x.short$Year_Quarter = c()
+x.long$Year_Quarter = c()
+x$Supply_New_Houses_l14 = dplyr::lag(x$Supply_New_Houses,14)
+x.short$Supply_New_Houses_l14 = dplyr::lag(x.short$Supply_New_Houses,14)
+x.long$Supply_New_Houses_l14 = dplyr::lag(x.long$Supply_New_Houses,14)
+x$Supply_New_Houses_l5 = dplyr::lag(x$Supply_New_Houses,5)
+x.short$Supply_New_Houses_l5 = dplyr::lag(x.short$Supply_New_Houses,5)
+x.long$Supply_New_Houses_l5 = dplyr::lag(x.long$Supply_New_Houses,5)
+ksfit = lm(x$Median_Sales_Price~x$Supply_New_Houses_l14+x$Supply_New_Houses_l5+t)
+summary(ksfit)
+AIC(ksfit) # -449.1047
+aic5.wge(ksfit$residuals,p=0:8,q=0:2,type='aic') # best 3/2 highest p 6 highest q 2
+aic5.wge(ksfit$residuals,p=0:8,q=0:4,type='aic') # best 3/2 highest p 5 highest q 3
+fit=arima(x.short$Median_Sales_Price[t.train.short],order=c(3,0,2),xreg=cbind(t.train.short,x.short$Supply_New_Houses_l14[t.train.short],x.short$Supply_New_Houses_l5[t.train.short]))
+preds = predict(fit,newxreg = data.frame(t=t.test.short,Supply_New_Houses_l14=x.short$Supply_New_Houses_l14[t.test.short],Supply_New_Houses_l5=x.short$Supply_New_Houses_l5[t.test.short]))
+ase = mean((fed_housing_data_NL$Median_Sales_Price[t.test.short]-exp(preds$pred))^2)/1e6
+ase # 212.8009
+plot(seq(1,l,1),x.short$Median_Sales_Price,type="b")
+points(seq((l-h.short+1),l,1),preds$pred,type="b",pch=15)
+fit=arima(x.long$Median_Sales_Price[t.train.long],order=c(3,0,2),xreg=cbind(t.train.long,x.long$Supply_New_Houses_l14[t.train.long],x.long$Supply_New_Houses_l5[t.train.long]))
+preds = predict(fit,newxreg = data.frame(t=t.test.long,Supply_New_Houses_l14=x.long$Supply_New_Houses_l14[t.test.long],Supply_New_Houses_l5=x.long$Supply_New_Houses_l5[t.test.long]))
+ase = mean((fed_housing_data_NL$Median_Sales_Price[t.test.long]-exp(preds$pred))^2)/1e6
+ase # 1908.763
+plot(seq(1,l,1),x.long$Median_Sales_Price,type="b")
+points(seq((l-h.long+1),l,1),preds$pred,type="b",pch=15)
+
+# Try t + Supply_New_Houses_l14 + Supply_New_Houses_l5 + Housing_Units_Completed_l20
+x = fed_housing_data
+x.short = fed_housing_data_short
+x.long = fed_housing_data_long
+x$Year_Quarter = c()
+x.short$Year_Quarter = c()
+x.long$Year_Quarter = c()
+x$Supply_New_Houses_l14 = dplyr::lag(x$Supply_New_Houses,14)
+x.short$Supply_New_Houses_l14 = dplyr::lag(x.short$Supply_New_Houses,14)
+x.long$Supply_New_Houses_l14 = dplyr::lag(x.long$Supply_New_Houses,14)
+x$Supply_New_Houses_l5 = dplyr::lag(x$Supply_New_Houses,5)
+x.short$Supply_New_Houses_l5 = dplyr::lag(x.short$Supply_New_Houses,5)
+x.long$Supply_New_Houses_l5 = dplyr::lag(x.long$Supply_New_Houses,5)
+x$Housing_Units_Completed_l20 = dplyr::lag(x$Housing_Units_Completed,20)
+x.short$Housing_Units_Completed_l20 = dplyr::lag(x.short$Housing_Units_Completed,20)
+x.long$Housing_Units_Completed_l20 = dplyr::lag(x.long$Housing_Units_Completed,20)
+ksfit = lm(x$Median_Sales_Price~x$Supply_New_Houses_l14+x$Supply_New_Houses_l5+x$Housing_Units_Completed_l20+t)
+summary(ksfit)
+AIC(ksfit) # -463.9736
+aic5.wge(ksfit$residuals,p=0:6,q=0:2,type='aic') # best 3/2 highest p 6 highest q 2
+aic5.wge(ksfit$residuals,p=0:8,q=0:4,type='aic') # best 3/3 highest p 4 highest q 4
+aic5.wge(ksfit$residuals,p=0:6,q=0:6,type='aic') # best 3/3 highest p 4 highest q 4
+fit=arima(x.short$Median_Sales_Price[t.train.short],order=c(3,0,3),xreg=cbind(t.train.short,x.short$Supply_New_Houses_l14[t.train.short],x.short$Supply_New_Houses_l5[t.train.short],x.short$Housing_Units_Completed_l20[t.train.short]))
+preds = predict(fit,newxreg = data.frame(t=t.test.short,Supply_New_Houses_l14=x.short$Supply_New_Houses_l14[t.test.short],Supply_New_Houses_l5=x.short$Supply_New_Houses_l5[t.test.short],Housing_Units_Completed_l20=x.short$Housing_Units_Completed_l20[t.test.short]))
+ase = mean((fed_housing_data_NL$Median_Sales_Price[t.test.short]-exp(preds$pred))^2)/1e6
+ase # 157.7445
+plot(seq(1,l,1),x.short$Median_Sales_Price,type="b")
+points(seq((l-h.short+1),l,1),preds$pred,type="b",pch=15)
+fit=arima(x.long$Median_Sales_Price[t.train.long],order=c(3,0,3),xreg=cbind(t.train.long,x.long$Supply_New_Houses_l14[t.train.long],x.long$Supply_New_Houses_l5[t.train.long],x.long$Housing_Units_Completed_l20[t.train.long]))
+preds = predict(fit,newxreg = data.frame(t=t.test.long,Supply_New_Houses_l14=x.long$Supply_New_Houses_l14[t.test.long],Supply_New_Houses_l5=x.long$Supply_New_Houses_l5[t.test.long],Housing_Units_Completed_l20=x.long$Housing_Units_Completed_l20[t.test.long]))
+ase = mean((fed_housing_data_NL$Median_Sales_Price[t.test.long]-exp(preds$pred))^2)/1e6
+ase # 2063.374
+plot(seq(1,l,1),x.long$Median_Sales_Price,type="b")
+points(seq((l-h.long+1),l,1),preds$pred,type="b",pch=15)
+
+# Try t + Supply_New_Houses_l14 + Supply_New_Houses_l5 + Housing_Units_Completed_l20 + Supply_New_Houses_l10
+t=1:l
+t.train.short= 1:(l-h.short)
+t.test.short=(l-h.short+1):l
+t.train.long= 1:(l-h.long)
+t.test.long=(l-h.long+1):l
+x = fed_housing_data
+x.short = fed_housing_data_short
+x.long = fed_housing_data_long
+x$Year_Quarter = c()
+x.short$Year_Quarter = c()
+x.long$Year_Quarter = c()
+x$Supply_New_Houses_l14 = dplyr::lag(x$Supply_New_Houses,14)
+x.short$Supply_New_Houses_l14 = dplyr::lag(x.short$Supply_New_Houses,14)
+x.long$Supply_New_Houses_l14 = dplyr::lag(x.long$Supply_New_Houses,14)
+x$Supply_New_Houses_l5 = dplyr::lag(x$Supply_New_Houses,5)
+x.short$Supply_New_Houses_l5 = dplyr::lag(x.short$Supply_New_Houses,5)
+x.long$Supply_New_Houses_l5 = dplyr::lag(x.long$Supply_New_Houses,5)
+x$Housing_Units_Completed_l20 = dplyr::lag(x$Housing_Units_Completed,20)
+x.short$Housing_Units_Completed_l20 = dplyr::lag(x.short$Housing_Units_Completed,20)
+x.long$Housing_Units_Completed_l20 = dplyr::lag(x.long$Housing_Units_Completed,20)
+x$Supply_New_Houses_l10 = dplyr::lag(x$Supply_New_Houses,10)
+x.short$Supply_New_Houses_l10 = dplyr::lag(x.short$Supply_New_Houses,10)
+x.long$Supply_New_Houses_l10 = dplyr::lag(x.long$Supply_New_Houses,10)
+ksfit = lm(x$Median_Sales_Price~x$Supply_New_Houses_l14+x$Supply_New_Houses_l5+x$Housing_Units_Completed_l20+x$Supply_New_Houses_l10+t)
+summary(ksfit)
+AIC(ksfit) # -481.4335
+aic5.wge(ksfit$residuals,p=0:4,q=0:2,type='aic') # best 3/1 highest p 4 highest q 2
+aic5.wge(ksfit$residuals,p=0:6,q=0:4,type='aic') # best 6/3 highest p 4 highest q 3
+aic5.wge(ksfit$residuals,p=0:8,q=0:6,type='aic') # best 7/0 highest p 8 highest q 6
+aic5.wge(ksfit$residuals,p=0:10,q=0:8,type='aic') # best 5/7 highest p 8 highest q 7
+fit=arima(x.short$Median_Sales_Price[t.train.short],order=c(5,0,7),xreg=cbind(t.train.short,x.short$Supply_New_Houses_l14[t.train.short],x.short$Supply_New_Houses_l5[t.train.short],x.short$Housing_Units_Completed_l20[t.train.short],x.short$Supply_New_Houses_l10[t.train.short]))
+preds = predict(fit,newxreg = data.frame(t=t.test.short,Supply_New_Houses_l14=x.short$Supply_New_Houses_l14[t.test.short],Supply_New_Houses_l5=x.short$Supply_New_Houses_l5[t.test.short],Housing_Units_Completed_l20=x.short$Housing_Units_Completed_l20[t.test.short],Supply_New_Houses_l10=x.short$Supply_New_Houses_l10[t.test.short]))
+ase = mean((fed_housing_data_NL$Median_Sales_Price[t.test.short]-exp(preds$pred))^2)/1e6
+ase # 131.6795
+plot(seq(1,l,1),x.short$Median_Sales_Price,type="b")
+points(seq((l-h.short+1),l,1),preds$pred,type="b",pch=15)
+fit=arima(x.long$Median_Sales_Price[t.train.long],order=c(5,0,7),xreg=cbind(t.train.long,x.long$Supply_New_Houses_l14[t.train.long],x.long$Supply_New_Houses_l5[t.train.long],x.long$Housing_Units_Completed_l20[t.train.long],x.long$Supply_New_Houses_l10[t.train.long]))
+preds = predict(fit,newxreg = data.frame(t=t.test.long,Supply_New_Houses_l14=x.long$Supply_New_Houses_l14[t.test.long],Supply_New_Houses_l5=x.long$Supply_New_Houses_l5[t.test.long],Housing_Units_Completed_l20=x.long$Housing_Units_Completed_l20[t.test.long],Supply_New_Houses_l10=x.long$Supply_New_Houses_l10[t.test.long]))
+ase = mean((fed_housing_data_NL$Median_Sales_Price[t.test.long]-exp(preds$pred))^2)/1e6
+ase # 2534.7
 plot(seq(1,l,1),x.long$Median_Sales_Price,type="b")
 points(seq((l-h.long+1),l,1),preds$pred,type="b",pch=15)
 
@@ -547,7 +658,7 @@ for (j in 1:num_vars) {
       test_indices <- unlist(folds[i])
       train <- x[train_indices, ]
       test <- x[test_indices, ]
-      form <- as.formula(paste("Median_Sales_Price ~ t + Supply_New_Houses_l14 + Supply_New_Houses_l5 + ",var,sep=""))
+      form <- as.formula(paste("Median_Sales_Price ~ t + Supply_New_Houses_l14 + Supply_New_Houses_l5 + Housing_Units_Completed_l20 + ",var,sep=""))
       model <- lm(form, data = train)
       predictions <- predict(model, newdata = test, type = "response")
       remove_na <- na.omit(predictions - test$Median_Sales_Price)
@@ -557,7 +668,39 @@ for (j in 1:num_vars) {
     })
   }
   var_rmse$rmse[var_rmse$var == var] <- mean(rmse)
-} # Housing_Units_Completed_l17: rmse = 0.06403859
-form <- as.formula(paste("Median_Sales_Price ~ t + Supply_New_Houses_l14 + Supply_New_Houses_l5 + Housing_Units_Completed_l20 + Housing_Units_Completed_l17",sep=""))
+} # Supply_New_Houses_l10: rmse = 0.06120728
+form <- as.formula(paste("Median_Sales_Price ~ t + Supply_New_Houses_l14 + Supply_New_Houses_l5 + Housing_Units_Completed_l20 + Supply_New_Houses_l10",sep=""))
 model <- lm(form, data = x)
 summary(model)
+
+# Remove a variable
+set.seed(24)
+start_form_str <- 'Median_Sales_Price ~ t + Supply_New_Houses_l14 + Supply_New_Houses_l5 + Housing_Units_Completed_l20 + Supply_New_Houses_l10'
+vars <- unlist(strsplit(start_form_str, "\\+"))
+vars <- trimws(vars)
+vars[1] <- substr(vars[1], 22, nchar(vars[1]))
+num_vars <- length(vars)
+var_rmse <- data.frame("vars" = vars)
+num_folds <- 5
+for (j in 1:num_vars) {
+  var <- vars[j]
+  print(paste(j,'/',num_vars,': ',var,sep=''))
+  folds <- createFolds(x$Median_Sales_Price, k = num_folds)
+  rmse <- numeric(num_folds)
+  for (i in 1:num_folds) {
+    tryCatch({
+      train_indices <- unlist(folds[-i])
+      test_indices <- unlist(folds[i])
+      train <- x[train_indices, ]
+      test <- x[test_indices, ]
+      form <- as.formula(paste(start_form_str," - ",var,sep=""))
+      model <- lm(form, data = train)
+      predictions <- predict(model, newdata = test, type = "response")
+      remove_na <- na.omit(predictions - test$Median_Sales_Price)
+      rmse[i] <- sqrt(mean(remove_na^2))
+    }, error = function(e) { 
+      rmse <- rmse[-i]
+    })
+  }
+  var_rmse$rmse[var_rmse$var == var] <- mean(rmse)
+}
