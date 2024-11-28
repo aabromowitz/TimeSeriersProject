@@ -711,7 +711,7 @@ plot(fore.mlp)
 ase=mean((test.long-fore.mlp$mean)^2)
 ase # 7203.322
 
-# Will officially go with ARMA(9,1) predictions
+# Will officially go with ARMA(6,5) predictions
 dev.off()
 x = fed_housing_data$Housing_Price_Index 
 d = artrans.wge(x,1)
@@ -727,7 +727,7 @@ hpi.pred.long = f$f
 
 ################################################################################
 
-# Housing units completed
+# Supply of New Houses
 x = fed_housing_data$Supply_New_Houses 
 plotts.sample.wge(x)
 d = artrans.wge(x,1)

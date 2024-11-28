@@ -225,9 +225,11 @@ x.long$Supply_New_Houses_l9 = dplyr::lag(x.long$Supply_New_Houses,9)
 ksfit = lm(x$Median_Sales_Price~x$Ownership_Rate+x$Housing_Units_Completed_l21+x$Supply_New_Houses_l9+x$Housing_Price_Index+t)
 summary(ksfit)
 AIC(ksfit) # -454.2937
+# Try removing Ownership_Rate, since it has a bad p value
 ksfit = lm(x$Median_Sales_Price~x$Housing_Units_Completed_l21+x$Supply_New_Houses_l9+x$Housing_Price_Index+t)
 summary(ksfit)
 AIC(ksfit) # -456.0482
+# go with no Ownership_Rate, since the resulting model has better p values and improves AIC
 aic5.wge(ksfit$residuals,p=0:16,q=0:4,type='aic') # best 2/0 highest p 3 highest q 2
 fit=arima(x.short$Median_Sales_Price[t.train.short],order=c(2,0,0),xreg=cbind(t.train.short,x.short$Housing_Units_Completed_l21[t.train.short],x.short$Supply_New_Houses_l9[t.train.short],x.short$Housing_Price_Index[t.train.short]))
 preds = predict(fit,newxreg = data.frame(t=t.test.short,Housing_Units_Completed_l21=x.short$Housing_Units_Completed_l21[t.test.short],Supply_New_Houses_l9=x.short$Supply_New_Houses_l9[t.test.short],Housing_Price_Index=x.short$Housing_Price_Index[t.test.short]))

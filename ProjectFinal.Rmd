@@ -304,17 +304,17 @@ r = roll.win.rmse.wge(log.mhp,h.short,d=2,phi=est$phi,theta=est$theta) # 0.04916
 r$rwRMSE
 ```
 ```{r ARIMA(1,2,1) Rolling Window RMSE 2, fig.show='hide', results='hide'}
-r = roll.win.rmse.wge(log.mhp,h.long,d=2,phi=est$phi,theta=est$theta) # 0.15465
+r = roll.win.rmse.wge(log.mhp,h.long,d=2,phi=est$phi,theta=est$theta) # 0.1809277
 ```
 ```{r ARIMA(1,2,1) Rolling Window RMSE 2 Output}
 r$rwRMSE
 ```
 
-For the ARIMA(1,2,1) model we get a short term Rolling Window RMSE of 0.049, a long term Rolling Window RMSE of 0.155, a short term ASE of 162.4 million and a long term ASE of 6.26 billion.  Even though this model had the best long term ASE so far, it did worse in the other metrics.
+For the ARIMA(1,2,1) model we get a short term Rolling Window RMSE of 0.049, a long term Rolling Window RMSE of 0.181, a short term ASE of 162.4 million and a long term ASE of 6.26 billion.  Even though this model had the best long term ASE so far, it did worse in the other metrics.
 
 Comparing all three ARMA/ARIMA models, we will choose the ARIMA(1,1,2).  
 
-```{r ARIMA(1,2,2) model characteristics}
+```{r ARIMA(1,1,2) model characteristics}
 est = est.arma.wge(d.log.mhp,p=1,q=2)
 f = fore.arima.wge(log.mhp,d=1,phi=est$phi,theta=est$theta,n.ahead=h.short,lastn=TRUE)
 aic = est$aic
@@ -334,7 +334,7 @@ $\sigma$_t^2 = 0.001
 
 Now we will look at residuals to make sure that they are white noise.
 
-```{r ARIMA(1,2,2) residual plots}
+```{r ARIMA(1,1,2) residual plots}
 plotts.wge(resid)
 acf(resid,lag.max=100) 
 parzen.wge(resid)
@@ -349,13 +349,13 @@ ljung.wge(resid,K=48,p=1,q=2) # p = 0.5584003, white
 
 The test gives more evidence that the residuals are white noise.  We can also check if they are normally distributed with a histogram.
 
-```{r ARIMA(1,2,2) residual histogram}
+```{r ARIMA(1,1,2) residual histogram}
 hist(resid)
 ```
 
 We also want to make sure that the ACFs and Parzen Windows generated from ARIMA(1,2,2) models look similar to that of our original data.
 
-```{r ARIMA(1,2,2) generated ACFs and Parzen Windows}
+```{r ARIMA(1,1,2) generated ACFs and Parzen Windows}
 # Multiple ACFs 
 set.seed(2)
 sims = 10
@@ -383,5 +383,134 @@ The ACFs don't match up exactly, but have the same slowly dampening behavior.  T
 
 # Exogenous Variable Forecasts
 
-In order to use the Exogenous variables in either the MLR or Multi-Variate MLP, it is more realistic to make predictions for them first.
+In order to use the Exogenous variables in either the MLR or Multi-Variate MLP, it is more realistic to make predictions for them first.  
+
+For error metrics, we will focus on the ASE for short and long term predictions.  This is because we are specifically using these short and long term predictions in future models.
+
+## Home Ownership Rate
+
+The Home Ownership Rate looked like either an ARMA or an ARIMA(p,1,q) might be appropriate.
+
+```{r re-plot Home Ownership Rate}
+x = fed_housing_data$Ownership_Rate 
+plotts.sample.wge(x)
+d = artrans.wge(x,1)
+```
+
+We will start with the ARIMA model.
+
+```{r AIC for Home Ownership Rate ARIMA}
+aic5.wge(d,p=0:10,q=0:4,type='aic') # 8/1 best
+```
+
+The model with the best AIC is p = 8, q = 1.
+
+```{r Home Ownership Rate ARIMA(8,1,1) metrics}
+est = est.arma.wge(d,p=8,q=1)
+f = fore.arima.wge(x,d=1,phi=est$phi,theta=est$theta,n.ahead=h.short,lastn=TRUE)
+ase = mean((x[(l-h.short+1):l]-f$f)^2)
+ase # 0.03083697
+f = fore.arima.wge(x,d=1,phi=est$phi,theta=est$theta,n.ahead=h.long,lastn=TRUE)
+ase = mean((x[(l-h.long+1):l]-f$f)^2)
+ase # 2.077416
+```
+
+This model has a short term ASE of 0.031 and a long term ASE of 2.08.
+
+Next will compare this to an ARMA model.
+
+```{r AIC for Home Ownership Rate ARMA}
+aic5.wge(x,p=0:16,q=0:4,type='aic') # 9/1 best
+```
+
+The model it chose had p = 9 and q = 1.
+
+```{r Home Ownership Rate ARMA(9,1) metrics}
+est = est.arma.wge(x,p=9,q=1)
+f = fore.arima.wge(x,phi=est$phi,theta=est$theta,n.ahead=h.short,lastn=TRUE)
+ase = mean((x[(l-h.short+1):l]-f$f)^2)
+ase # 0.02468854
+f = fore.arima.wge(x,phi=est$phi,theta=est$theta,n.ahead=h.long,lastn=TRUE)
+ase = mean((x[(l-h.long+1):l]-f$f)^2)
+ase # 1.108741
+```
+
+This model had better ASE values with 0.025 for short term and 1.11 for long term.  This will be the predictions we use for our MLR and MLP models.
+
+```{r Home Ownership Rate creating forecast predictions}
+fed_housing_data_short = fed_housing_data
+fed_housing_data_long = fed_housing_data
+x = fed_housing_data$Ownership_Rate 
+est = est.arma.wge(x,p=9,q=1)
+f = fore.arima.wge(x,phi=est$phi,theta=est$theta,n.ahead=h.short,lastn=TRUE)
+hor.pred.short = f$f
+f = fore.arima.wge(x,phi=est$phi,theta=est$theta,n.ahead=h.long,lastn=TRUE)
+hor.pred.long = f$f
+fed_housing_data_short$Ownership_Rate[(l-h.short+1):l] = hor.pred.short
+fed_housing_data_long$Ownership_Rate[(l-h.long+1):l] = hor.pred.long
+```
+
+## Housing Units Completed
+
+The Housing Units Completed variable looked like either an ARMA or an ARIMA(p,1,q) might be appropriate for forecasting.
+
+```{r re-plot Housing Units Completed}
+x = fed_housing_data$Housing_Units_Completed 
+plotts.sample.wge(x)
+d = artrans.wge(x,1)
+```
+
+However, this looks like the autocorrelations dampen even less slowly than the Home Ownership Rate, meaning that an ARIMA(p,1,q) model would be even less appropriate.  Since we chose the ARMA model for Home Ownership Rate over the ARIMA model.  We will just focus on the ARMA model for Housing Units Complete.
+
+```{r AIC for Housing Units Completed}
+aic5.wge(x,p=0:10,q=0:1,type='aic') # 10/0 best
+```
+
+The highest AIC value was for p = 10 and q = 0.
+
+```{r Housing Units Completed AR(10) metrics}
+est = est.ar.wge(x,p=10)
+f = fore.arima.wge(x,phi=est$phi,n.ahead=h.short,lastn=TRUE)
+ase = mean((x[(l-h.short+1):l]-f$f)^2)/1e3
+ase # 12.98288
+f = fore.arima.wge(x,phi=est$phi,n.ahead=h.long,lastn=TRUE)
+ase = mean((x[(l-h.long+1):l]-f$f)^2)/1e3
+ase # 8.546039
+```
+
+This gives a short term ASE of 13.0k and a long term ASE of 8.5k.  Playing around with some of the other output from the aic5 output showed that an ARMA(9,1) model does slightly better for long term predictions and slightly worse for short term predictions.
+
+```{r Housing Units Completed ARMA(9,1) metrics}
+est = est.arma.wge(x,p=9,q=1)
+f = fore.arima.wge(x,phi=est$phi,theta=est$theta,n.ahead=h.short,lastn=TRUE)
+ase = mean((x[(l-h.short+1):l]-f$f)^2)/1e3
+ase # 13.44075
+f = fore.arima.wge(x,phi=est$phi,theta=est$theta,n.ahead=h.long,lastn=TRUE)
+ase = mean((x[(l-h.long+1):l]-f$f)^2)/1e3
+ase # 8.516217
+```
+
+We will proceed with the ARMA(9,1) forecast for our future models that use exogenous variables.
+
+```{r Housing Units Completed creating forecast predictions}
+x = fed_housing_data$Housing_Units_Completed  
+est = est.arma.wge(x,p=9,q=1)
+f = fore.arima.wge(x,phi=est$phi,theta=est$theta,n.ahead=h.short,lastn=TRUE)
+huc.pred.short = f$f
+f = fore.arima.wge(x,phi=est$phi,theta=est$theta,n.ahead=h.long,lastn=TRUE)
+huc.pred.long = f$f
+fed_housing_data_short$Housing_Units_Completed[(l-h.short+1):l] = huc.pred.short
+fed_housing_data_long$Housing_Units_Completed[(l-h.long+1):l] = huc.pred.long
+```
+
+## Supply of New Houses
+
+Similar to Housing Units Completed, an ARMA model seems like it would be most appropriate for Supply of New Houses.
+
+```{r re-plot Supply of New Houses}
+x = fed_housing_data$Supply_New_Houses 
+plotts.sample.wge(x)
+d = artrans.wge(x,1)
+```
+
 

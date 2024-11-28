@@ -181,3 +181,5 @@ xtNewForBS = colMeans(confint)
 plotts.wge(c(fit.mlp$fitted[t.train.long],xtNewForBS))
 lines(seq((l-h.long+1),l,1),percentiles_per_column[,1],col = "blue")
 lines(seq((l-h.long+1),l,1),percentiles_per_column[,2],col = "blue")
+x = fed_housing_data$Median_Sales_Price
+lines(seq((l-h.long+1),l,1),x[(l-h.long+1):l],col = "red")
