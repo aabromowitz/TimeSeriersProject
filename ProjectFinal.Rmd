@@ -764,7 +764,7 @@ We investigated 3 Neural Nets for predictions: Multilayer Perceptron (MLP), Long
 
 ## LSTM
 
-LSTMs are a type of Recurrent Neural Network (RNN) that have shown success with Time Series data.
+LSTMs (Long Short-Term Memory) are a type of Recurrent Neural Network (RNN) that have shown success with Time Series data.
 
 The LSTM was created in Python.  The code is below.
 
@@ -1011,3 +1011,301 @@ ase <- read.csv(file_path, header = TRUE)
 ase
 ```
 
+## TFT
+
+TFT (Temporal Fusion Transformer) is an algorithm that uses Transformers and Attention to forecast Time Series data.  The model is known for being able to do very well with non-linear data, when it has tens of thousands or even hundreds of thousands of training examples.  We have less than 1000, so it is unlikely to do well on this dataset.
+
+The TFT was created in Python.  The code is below.
+
+```{python TFT python code, eval=FALSE}
+# https://unit8co.github.io/darts/generated_api/darts.models.forecasting.tft_model.html#darts.models.forecasting.tft_model.TFTModel
+
+# from darts.datasets import WeatherDataset
+from darts.models import TFTModel
+from darts import TimeSeries
+from darts.explainability.tft_explainer import TFTExplainer
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+
+
+# series = WeatherDataset().load()
+series = pd.read_csv('https://raw.githubusercontent.com/aabromowitz/TimeSeriersProject/refs/heads/main/fed_housing_data.csv')
+
+# Convert 'Year_Quarter' to datetime
+# import pdb
+# pdb.set_trace()
+# series['Year_Quarter'] = pd.to_datetime(series['Year_Quarter'], format='%Y-Q%q')  # Adjust format as needed
+series['Year_Quarter'] = pd.to_datetime(series['Year_Quarter'])
+
+# Convert pandas Series/DataFrames to Darts TimeSeries
+# Assuming 'Year_Quarter' is your time index
+# First set the index to Year_Quarter
+series = series.set_index('Year_Quarter')
+
+# predicting atmospheric pressure
+# target = series['p (mbar)'][:100]
+h_short = 4
+h_long = 20
+# import pdb
+# pdb.set_trace()
+target = TimeSeries.from_dataframe(series[['Median_Sales_Price']][:-h_short])  # All data except last h_short entries
+
+# optionally, past observed rainfall (pretending to be unknown beyond index 100)
+# import pdb
+# pdb.set_trace()
+past_cov = TimeSeries.from_dataframe(series[['Ownership_Rate','Housing_Units_Completed','Supply_New_Houses','Housing_Price_Index']][:-h_short])
+
+# future temperatures (pretending this component is a forecast)
+# future_cov = series['T (degC)'][:106]
+
+# by default, TFTModel is trained using a `QuantileRegression` making it a probabilistic forecasting model
+# input_chunk_length = 12
+input_chunk_length = 8
+# n_epochs = 5
+# n_epochs = 200
+n_epochs = 20
+random_state = 42
+model = TFTModel(
+    # input_chunk_length=8,
+    input_chunk_length=input_chunk_length,
+    output_chunk_length=h_short,
+    hidden_size=128,              # Larger hidden size for more capacity
+    lstm_layers=2,                # More LSTM layers
+    num_attention_heads=4,        # More attention heads
+    dropout=0.1,                  # Some dropout for regularization
+    batch_size=16,                # Smaller batch size since we have limited data
+    n_epochs=n_epochs,
+    # learning_rate=0.001,          # Standard learning rate, ValueError: Invalid model creation parameters. Model `TFTModel` has no args/kwargs `['learning_rate']`
+    random_state=random_state
+)
+
+# future_covariates are mandatory for `TFTModel`
+# import pdb
+# pdb.set_trace()
+# future_cov = TimeSeries.from_dataframe(series[['Year_Quarter']])
+# future_cov = TimeSeries.from_dataframe(series.iloc[:, 0])
+future_cov = TimeSeries.from_dataframe(series.iloc[:, [0]])
+model.fit(target, past_covariates=past_cov, future_covariates=future_cov)
+
+# TFTModel is probabilistic by definition; using `num_samples >> 1` to generate probabilistic forecasts
+# pred = model.predict(h_short, num_samples=1000)
+
+# Get mean prediction
+# mean_pred = pred.mean()
+
+# Get quantiles if you want confidence intervals
+# quantiles_pred = pred.quantile([0.025, 0.975])  # 95% confidence interval
+# import pdb
+# pdb.set_trace()
+# quantiles_pred = pred.quantile([0.025, 0.975])  # 95% confidence interval
+# quantiles_pred_1 = pred.quantile(0.025)
+# quantiles_pred_2 = pred.quantile(0.975)
+
+def evaluate_model(model, h):
+    """
+    Evaluate the TFT model using multiple metrics
+    """
+    # Make predictions
+    # predictions = model.predict(n=h_short, num_samples=100)
+    predictions = model.predict(n=h, num_samples=1000)
+    mean_predictions = predictions.mean()
+
+    # Get confidence intervals
+    # confidence_intervals = predictions.quantiles([0.025, 0.975])
+    lower_bound = predictions.quantile(0.025)  # 2.5th percentile
+    upper_bound = predictions.quantile(0.975)  # 97.5th percentile
+    
+    # Get actual values (last h_short values)
+    # actuals = target[-h_short:]
+    actuals = TimeSeries.from_dataframe(series[['Median_Sales_Price']][-h:])
+    
+    # Convert to numpy arrays for calculations
+    pred_values = mean_predictions.values()
+    actual_values = actuals.values()
+    lower_values = lower_bound.values()
+    upper_values = upper_bound.values()
+    
+    # Calculate metrics
+    total_se = 0
+    n = len(pred_values)
+    predictions_list = []
+    actuals_list = []
+    lower_bounds_list = []
+    upper_bounds_list = []
+    
+    for i in range(n):
+        pred = pred_values[i][0]  # Assuming single-variable predictions
+        actual = actual_values[i][0]
+        lower = lower_values[i][0]
+        upper = upper_values[i][0]
+        
+        # Store predictions and actuals
+        predictions_list.append(pred)
+        actuals_list.append(actual)
+        lower_bounds_list.append(lower)
+        upper_bounds_list.append(upper)
+
+        # Then un-log transform
+        pred = np.exp(pred)
+        actual = np.exp(actual)
+        
+        # Calculate squared error
+        se = (pred - actual) ** 2
+        total_se += se
+    
+    # Calculate average squared error
+    ase = total_se / 1e6 /n if n > 0 else 0
+    
+    return predictions_list, actuals_list, lower_bounds_list, upper_bounds_list, ase
+
+# Use the evaluation function
+preds, acts, lower_bounds, upper_bounds, ase = evaluate_model(model, h_short)
+
+# Print results
+print(f"Average Squared Error for short term prediction: {ase:,.2f}")
+print("\nPredictions vs Actuals with 95% Confidence Intervals:")
+for i, (p, a, l, u) in enumerate(zip(preds, acts, lower_bounds, upper_bounds)):
+    print(f"Period {i+1}:")
+    print(f"  Predicted = {p:,.2f} [{l:,.2f}, {u:,.2f}]")
+    print(f"  Actual    = {a:,.2f}")
+    print(f"  Diff      = {abs(p-a):,.2f}")
+    print(f"  Width CI  = {u-l:,.2f}")
+
+# Optional: Calculate additional metrics
+# mape_score = mape(target[-h_short:], model.predict(n=h_short).mean())
+# print(f"\nMAPE: {mape_score:.2%}")
+
+# After training the model
+# static_covariates = None  # If you have any static covariates, include them here
+
+def save_detailed_results(preds, acts, lower_bounds, upper_bounds, ase, model_name="short_term"):
+    # Predictions DataFrame
+    results_df = pd.DataFrame({
+        'Predicted': preds,
+        'Actual': acts,
+        'Lower_Bound': lower_bounds,
+        'Upper_Bound': upper_bounds,
+        'Absolute_Error': np.abs(np.array(preds) - np.array(acts)),
+        'Squared_Error': (np.array(preds) - np.array(acts))**2,
+        'CI_Width': np.array(upper_bounds) - np.array(lower_bounds),
+        'Within_CI': (np.array(acts) >= np.array(lower_bounds)) & 
+                    (np.array(acts) <= np.array(upper_bounds))
+    })
+    
+    # Calculate summary metrics
+    metrics_df = pd.DataFrame({
+        'Metric': ['ASE', 'MAE', 'RMSE', 'Mean_CI_Width', 'Coverage_Rate'],
+        'Value': [
+            ase,
+            np.mean(np.abs(np.array(preds) - np.array(acts))),
+            np.sqrt(np.mean((np.array(preds) - np.array(acts))**2)),
+            np.mean(np.array(upper_bounds) - np.array(lower_bounds)),
+            np.mean((np.array(acts) >= np.array(lower_bounds)) & 
+                   (np.array(acts) <= np.array(upper_bounds)))
+        ]
+    })
+    
+    # Save both files
+    results_df.to_csv(f'predictions_detailed_{model_name}.csv', index=True)
+    metrics_df.to_csv(f'metrics_detailed_{model_name}.csv', index=False)
+    
+    print(f"Detailed results saved to predictions_detailed_{model_name}.csv and metrics_detailed_{model_name}.csv")
+
+save_detailed_results(preds, acts, lower_bounds, upper_bounds, ase, model_name="TFT_short_term")
+
+# Get interpretability components
+# interpretability = model.interpret_output(
+# import pdb
+# pdb.set_trace()
+# interpretability = model.interpret(target,past_covariates=past_cov,future_covariates=future_cov,static_covariates=static_covariates)
+explainer = TFTExplainer(model)
+results = explainer.explain()
+
+# Save the variable selection plot
+# plt.figure(figsize=(12, 8))
+explainer.plot_variable_selection(results)
+# plt.savefig('variable_importance_short.png')  # Save to file
+# plt.close()  # Close the plot to free memory
+
+# Try with long term predictions as well
+# import pdb
+# pdb.set_trace()
+target = TimeSeries.from_dataframe(series[['Median_Sales_Price']][:-h_long])
+past_cov = TimeSeries.from_dataframe(series[['Ownership_Rate','Housing_Units_Completed','Supply_New_Houses','Housing_Price_Index']][:-h_long])
+model = TFTModel(
+    # input_chunk_length=8,
+    input_chunk_length=input_chunk_length,
+    output_chunk_length=h_long,
+    hidden_size=128,              # Larger hidden size for more capacity
+    lstm_layers=2,                # More LSTM layers
+    num_attention_heads=4,        # More attention heads
+    dropout=0.1,                  # Some dropout for regularization
+    batch_size=16,                # Smaller batch size since we have limited data
+    n_epochs=n_epochs,
+    # learning_rate=0.001,        # Standard learning rate, ValueError: Invalid model creation parameters. Model `TFTModel` has no args/kwargs `['learning_rate']`
+    random_state=random_state
+)
+model.fit(target, past_covariates=past_cov, future_covariates=future_cov)
+preds, acts, lower_bounds, upper_bounds, ase = evaluate_model(model, h_long)
+print(f"Average Squared Error for long term prediction: {ase:,.2f}")
+print("\nPredictions vs Actuals with 95% Confidence Intervals:")
+for i, (p, a, l, u) in enumerate(zip(preds, acts, lower_bounds, upper_bounds)):
+    print(f"Period {i+1}:")
+    print(f"  Predicted = {p:,.2f} [{l:,.2f}, {u:,.2f}]")
+    print(f"  Actual    = {a:,.2f}")
+    print(f"  Diff      = {abs(p-a):,.2f}")
+    print(f"  Width CI  = {u-l:,.2f}")
+save_detailed_results(preds, acts, lower_bounds, upper_bounds, ase, model_name="TFT_long_term")
+explainer = TFTExplainer(model)
+results = explainer.explain()
+explainer.plot_variable_selection(results)
+```
+
+The short term prediction was the following:
+
+```{r TFT short term predictions}
+file_path = "https://raw.githubusercontent.com/aabromowitz/TimeSeriersProject/refs/heads/main/predictions_detailed_TFT_short_term.csv"
+pred <- read.csv(file_path, header = TRUE)
+pred
+h.short = 4
+x = fed_housing_data$Median_Sales_Price
+l = length(x)
+plot(seq(1,l,1),x,type="b")
+points(seq(l-h.short+1,l,1),pred$Predicted,type="b",pch=15,col="blue")
+lines(seq(l-h.short+1,l,1),pred$Lower_Bound,lty=2, col="red", lwd=2)
+lines(seq(l-h.short+1,l,1),pred$Upper_Bound,lty=2, col="red", lwd=2)
+```
+
+The short term ASE was 11.5 B.  This was significantly worse than other models.  The poor results aren't unexpected though, as there were so few data points to train on.
+
+```{r TFT short term ASE}
+file_path = "https://raw.githubusercontent.com/aabromowitz/TimeSeriersProject/refs/heads/main/metrics_detailed_TFT_short_term.csv"
+metrics <- read.csv(file_path, header = TRUE)
+metrics # 1146
+```
+
+The long term prediction was the following:
+
+```{r TFT long term predictions}
+file_path = "https://raw.githubusercontent.com/aabromowitz/TimeSeriersProject/refs/heads/main/predictions_detailed_TFT_long_term.csv"
+pred <- read.csv(file_path, header = TRUE)
+pred
+h.long=20
+x = fed_housing_data$Median_Sales_Price
+l = length(x)
+plot(seq(1,l,1),x,type="b")
+points(seq(l-h.long+1,l,1),pred$Predicted,type="b",pch=15,col="blue")
+lines(seq(l-h.long+1,l,1),pred$Lower_Bound,lty=2, col="red", lwd=2)
+lines(seq(l-h.long+1,l,1),pred$Upper_Bound,lty=2, col="red", lwd=2)
+```
+
+The long term ASE was 15.0 B.  Similar to the short term predictions, this model did very poorly compared to the other models.
+
+```{r TFT long term ASE}
+file_path = "https://raw.githubusercontent.com/aabromowitz/TimeSeriersProject/refs/heads/main/metrics_detailed_TFT_long_term.csv"
+metrics <- read.csv(file_path, header = TRUE)
+metrics # 1146
+```
+
+# Ensemble
