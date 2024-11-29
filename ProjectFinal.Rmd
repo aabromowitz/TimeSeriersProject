@@ -420,7 +420,7 @@ This model has a short term ASE of 0.031 and a long term ASE of 2.08.
 Next will compare this to an ARMA model.
 
 ```{r AIC for Home Ownership Rate ARMA}
-aic5.wge(x,p=0:16,q=0:4,type='aic') # 9/1 best
+aic5.wge(x,p=0:12,q=0:2,type='aic') # 9/1 best
 ```
 
 The model it chose had p = 9 and q = 1.
@@ -513,4 +513,501 @@ plotts.sample.wge(x)
 d = artrans.wge(x,1)
 ```
 
+```{r AIC for Supply of New Houses}
+aic5.wge(x,p=0:4,q=0:1,type='aic') # 1/0 best
+```
+
+The highest AIC value was for p = 1 and q = 0.
+
+```{r Supply of New Houses AR(1) metrics}
+est = est.ar.wge(x,p=1)
+f = fore.arima.wge(x,phi=est$phi,n.ahead=h.short,lastn=TRUE)
+ase = mean((x[(l-h.short+1):l]-f$f)^2)
+ase # 0.6951032
+f = fore.arima.wge(x,phi=est$phi,n.ahead=h.long,lastn=TRUE)
+ase = mean((x[(l-h.long+1):l]-f$f)^2)
+ase # 3.865913
+```
+
+This gives a short term ASE of 13.0k and a long term ASE of 8.5k.  Playing around with some of the other output from the aic5 output showed that an ARMA(9,1) model does slightly better for long term predictions and slightly worse for short term predictions.
+
+```{r Supply of New Houses ARMA(1,1) metrics}
+est = est.arma.wge(x,p=1,q=1)
+f = fore.arima.wge(x,phi=est$phi,theta=est$theta,n.ahead=h.short,lastn=TRUE)
+ase = mean((x[(l-h.short+1):l]-f$f)^2)
+ase # 0.4791473
+f = fore.arima.wge(x,phi=est$phi,theta=est$theta,n.ahead=h.long,lastn=TRUE)
+ase = mean((x[(l-h.long+1):l]-f$f)^2)
+ase # 3.901133
+```
+
+The short term ASE for the ARMA(1,1) is significantly better, but the long term ASE is a little worse.  We will proceed with the ARMA(1,1) model.
+
+```{r Supply of New Houses creating forecast predictions}
+x = fed_housing_data$Supply_New_Houses   
+est = est.arma.wge(x,p=1,q=1)
+f = fore.arima.wge(x,phi=est$phi,theta=est$theta,n.ahead=h.short,lastn=TRUE)
+snh.pred.short = f$f
+f = fore.arima.wge(x,phi=est$phi,theta=est$theta,n.ahead=h.long,lastn=TRUE)
+snh.pred.long = f$f
+fed_housing_data_short$Supply_New_Houses[(l-h.short+1):l] = snh.pred.short
+fed_housing_data_long$Supply_New_Houses[(l-h.long+1):l] = snh.pred.long
+```
+
+## House price index
+
+```{r re-plot House price index}
+x = fed_housing_data$Housing_Price_Index
+plotts.sample.wge(x)
+d = artrans.wge(x,1)
+d2 = artrans.wge(d,1)
+dev.off()
+parzen.wge(d2)
+d3 = artrans.wge(d2,c(0,-1))
+dev.off()
+acf(d3,lag.max=100)
+```
+
+This plot is more similar to the variable of interest, Medium Sale Price.   This means that a linear signal plus noise model could be useful.
+
+However, unlike the other variables, it looked like a single difference wasn't white noise.  Even differencing out the (1-B)^2 still had a 0.25 frequency.  Differencing out that frequency as well looked more like white noise.  So we will look at a signal plus noise model and a (1-B)^2*(1+B^2) model.
+
+```{r House price index signal plus noise AIC}
+f = fore.sigplusnoise.wge(x,max.p=0,n.ahead=h.short,lastn=TRUE)
+aic5.ar.wge(f$resid,p=0:20) # p = 9
+```
+
+The model for the noise with the highest AIC value is p = 9.
+
+```{r House price index signal plus noise ASE}
+f = fore.sigplusnoise.wge(x,max.p=9,n.ahead=h.short,lastn=TRUE)
+ase = mean((x[(l-h.short+1):l]-f$f)^2)
+ase # 161.2832
+f = fore.sigplusnoise.wge(x,max.p=9,n.ahead=h.long,lastn=TRUE)
+ase = mean((x[(l-h.long+1):l]-f$f)^2)
+ase # 10014.69
+```
+
+The short term ASE is 161 and the long term ASE is 10,014.
+
+```{r House price index signal plus noise metrics}
+aic5.wge(d3,p=0:8,q=0:6,type='aic') # 4/5 best
+```
+
+It looks like the model with p = 4 and q = 5 had the best AIC.
+
+```{r House price index ARMA(4,5) metrics}
+est = est.arma.wge(d3,p=4,q=5)
+m = mult.wge(fac1=est$phi,fac2=c(0,-1))
+factor.wge(m$model.coef) # looks good
+f = fore.arima.wge(x,d=2,phi=m$model.coef,theta=est$theta,n.ahead=h.short,lastn=TRUE)
+ase = mean((x[(l-h.short+1):l]-f$f)^2)
+ase # 16.01932
+f = fore.arima.wge(x,d=2,phi=m$model.coef,theta=est$theta,n.ahead=h.long,lastn=TRUE)
+ase = mean((x[(l-h.long+1):l]-f$f)^2)
+ase # 2109.469
+```
+
+This model did significantly better with a short term ASE of 16 and a long term ASE of 2,109.  Testing out some of the other values from aic5, found that p = 6 and q = 5 did even better.
+
+```{r House price index ARMA(6,5) metrics}
+est = est.arma.wge(d3,p=6,q=5)
+m = mult.wge(fac1=est$phi,fac2=c(0,-1))
+factor.wge(m$model.coef) # looks good
+f = fore.arima.wge(x,d=2,phi=m$model.coef,theta=est$theta,n.ahead=h.short,lastn=TRUE)
+ase = mean((x[(l-h.short+1):l]-f$f)^2)
+ase # 14.86637
+f = fore.arima.wge(x,d=2,phi=m$model.coef,theta=est$theta,n.ahead=h.long,lastn=TRUE)
+ase = mean((x[(l-h.long+1):l]-f$f)^2)
+ase # 558.2356
+```
+
+This model had a short term ASE of 15 and a long term ASE of 558.  This is the model we will use to get the forecasts.
+
+```{r House price index creating forecast predictions}
+x = fed_housing_data$Housing_Price_Index 
+d = artrans.wge(x,1)
+d2 = artrans.wge(d,1)
+d3 = artrans.wge(d2,c(0,-1))
+est = est.arma.wge(d3,p=6,q=5)
+m = mult.wge(fac1=est$phi,fac2=c(0,-1))
+f = fore.arima.wge(x,d=2,phi=m$model.coef,theta=est$theta,n.ahead=h.short,lastn=TRUE)
+hpi.pred.short = f$f
+f = fore.arima.wge(x,d=2,phi=m$model.coef,theta=est$theta,n.ahead=h.long,lastn=TRUE)
+hpi.pred.long = f$f
+fed_housing_data_short$Housing_Price_Index[(l-h.short+1):l] = hpi.pred.short
+fed_housing_data_long$Housing_Price_Index[(l-h.long+1):l] = hpi.pred.long
+```
+
+# Multi-variate Models
+
+We will try out an MLR model with lag and a VAR model that predicts all variables at the same time.  The exogenous predictions we made previously will be used for the MLR Model.
+
+## MLR Model
+
+We will first start by looking at the lag plots for the four exogenous variables.
+
+```{r MLR lag plots}
+x = fed_housing_data
+l = ccf(x$Median_Sales_Price,x$Ownership_Rate,lag.max=80)
+which.max(l$acf)
+l$acf[20] # 0.3090685
+l$lag[20] # 0
+l = ccf(x$Median_Sales_Price,x$Housing_Units_Completed,lag.max=80)
+which.max(l$acf)
+l$acf[150] # 0.263895
+l$lag[150] # 69, 21 seemed alright
+l = ccf(x$Median_Sales_Price,x$Supply_New_Houses,lag.max=60)
+which.min(l$acf)
+l$acf[70] # -0.2592145
+l$lag[70] # 9
+l = ccf(x$Median_Sales_Price,x$Housing_Price_Index,lag.max=60)
+which.max(l$acf)
+l$acf[61] # 0.933195
+l$lag[61] # 0
+```
+
+It looks like Ownership Rate has a lag of 0, Housing Units Completed has a lag of 21, Supply of New Houses has a lag of 9, and Housing Price Index has a lag of 0.
+
+What does a model with these 4 lagged variables look like.
+
+```{r MLR 4 lagged variables}
+x.short = fed_housing_data_short
+x.long = fed_housing_data_long
+x$Year_Quarter = c()
+x.short$Year_Quarter = c()
+x.long$Year_Quarter = c()
+l = length(x$Median_Sales_Price)
+t=1:l
+t.train.short= 1:(l-h.short)
+t.test.short=(l-h.short+1):l
+t.train.long= 1:(l-h.long)
+t.test.long=(l-h.long+1):l
+x$Housing_Units_Completed_l21 = dplyr::lag(x$Housing_Units_Completed,21)
+x$Supply_New_Houses_l9 = dplyr::lag(x$Supply_New_Houses,9)
+x.short$Housing_Units_Completed_l21 = dplyr::lag(x.short$Housing_Units_Completed,21)
+x.short$Supply_New_Houses_l9 = dplyr::lag(x.short$Supply_New_Houses,9)
+x.long$Housing_Units_Completed_l21 = dplyr::lag(x.long$Housing_Units_Completed,21)
+x.long$Supply_New_Houses_l9 = dplyr::lag(x.long$Supply_New_Houses,9)
+ksfit = lm(x$Median_Sales_Price~x$Ownership_Rate+x$Housing_Units_Completed_l21+x$Supply_New_Houses_l9+x$Housing_Price_Index+t)
+summary(ksfit)
+AIC(ksfit) # -454.2937
+```
+
+The Ownership rate variable didn't have a very high p value, so it wasn't significant in the model.  Let's see what happens when it is removed.
+
+```{r MLR 3 lagged variables}
+ksfit = lm(x$Median_Sales_Price~x$Housing_Units_Completed_l21+x$Supply_New_Houses_l9+x$Housing_Price_Index+t)
+summary(ksfit)
+AIC(ksfit) # -456.0482
+```
+
+In this model, all the variables are significant.  The AIC value is slightly lower as well.  We will now determine how to model the residuals using an ARMA model.
+
+```{r MLR ARMA}
+aic5.wge(ksfit$residuals,p=0:4,q=0:2,type='aic') # best 2/0
+```
+
+The model with the best AIC is an AR(2).
+
+```{r MLR ASEs}
+fit=arima(x.short$Median_Sales_Price[t.train.short],order=c(2,0,0),xreg=cbind(t.train.short,x.short$Housing_Units_Completed_l21[t.train.short],x.short$Supply_New_Houses_l9[t.train.short],x.short$Housing_Price_Index[t.train.short]))
+preds = predict(fit,newxreg = data.frame(t=t.test.short,Housing_Units_Completed_l21=x.short$Housing_Units_Completed_l21[t.test.short],Supply_New_Houses_l9=x.short$Supply_New_Houses_l9[t.test.short],Housing_Price_Index=x.short$Housing_Price_Index[t.test.short]))
+ase = mean((fed_housing_data_NL$Median_Sales_Price[t.test.short]-exp(preds$pred))^2)/1e6
+ase # 588.675
+plot(seq(1,l,1),x.short$Median_Sales_Price,type="b")
+points(seq((l-h.short+1),l,1),preds$pred,type="b",pch=15,col="blue")
+fit=arima(x.long$Median_Sales_Price[t.train.long],order=c(2,0,0),xreg=cbind(t.train.long,x$Housing_Units_Completed_l21[t.train.long],x$Supply_New_Houses_l9[t.train.long],x$Housing_Price_Index[t.train.long]))
+preds = predict(fit,newxreg = data.frame(t=t.test.short,Housing_Units_Completed_l21=x.long$Housing_Units_Completed_l21[t.test.long],Supply_New_Houses_l9=x.long$Supply_New_Houses_l9[t.test.long],Housing_Price_Index=x.long$Housing_Price_Index[t.test.long]))
+ase = mean((fed_housing_data_NL$Median_Sales_Price[t.test.long]-exp(preds$pred))^2)/1e6
+ase # 1431.873
+plot(seq(1,l,1),x.long$Median_Sales_Price,type="b")
+points(seq((l-h.long+1),l,1),preds$pred,type="b",pch=15,col="blue")
+```
+
+The short term ASE is 589 M and the long term ASE is 1.4 B.
+
+## VAR Model
+
+```{r VAR AIC}
+x = fed_housing_data
+x$Year_Quarter = c()
+VARselect(x,lag.max=16,type="both",season=NULL,exogen=NULL) # lag = 4
+```
+
+The model with lag = 4 was chosen.   
+
+```{r VAR ASEs}
+fit = VAR(x,p=4,type='both') 
+summary(fit) # trend and const were significant, but only lag up to 2 for variable of interest, huc not very predictive
+preds=predict(fit,n.ahead=h.short)
+ase = mean((fed_housing_data_NL$Median_Sales_Price[(l-h.short+1):l]-exp(preds$fcst$Median_Sales_Price[,1]))^2)/1e6
+ase # 46.3595
+plot(seq(1,l,1),x$Median_Sales_Price,type="b")
+points(seq(l-h.short+1,l,1),preds$fcst$Median_Sales_Price[1:h.short,1],type="b",pch=15,col="blue")
+fanchart(preds)
+preds=predict(fit,n.ahead=h.long)
+ase = mean((fed_housing_data_NL$Median_Sales_Price[(l-h.long+1):l]-exp(preds$fcst$Median_Sales_Price[,1]))^2)/1e6
+ase # 3499.949
+plot(seq(1,l,1),x$Median_Sales_Price,type="b")
+points(seq(l-h.long+1,l,1),preds$fcst$Median_Sales_Price[1:h.long,1],type="b",pch=15,col="blue")
+fanchart(preds)
+```
+
+The VAR model has a very small short term ASE of 46.4 M.  This is even smaller than the signal plus noise model.  However, its long term ASE is larger than the MLR model.
+
+# Neural Networks
+
+We investigated 3 Neural Nets for predictions: Multilayer Perceptron (MLP), Long Short-Term Memory(LSTM), and Temporal Fusion Transformer (TFT).
+
+## MLP
+
+## LSTM
+
+LSTMs are a type of Recurrent Neural Network (RNN) that have shown success with Time Series data.
+
+The LSTM was created in Python.  The code is below.
+
+```{python python code, eval=FALSE}
+import torch
+import torch.nn as nn
+import pandas as pd
+from torch.utils.data import Dataset, DataLoader
+from sklearn.preprocessing import MinMaxScaler
+import numpy as np
+import random
+
+class TimeSeriesDataset(Dataset):
+    def __init__(self, data, sequence_length):
+        self.data = torch.FloatTensor(data)
+        self.sequence_length = sequence_length
+
+    def __len__(self):
+        return len(self.data) - self.sequence_length
+
+    def __getitem__(self, idx):
+        return (
+            self.data[idx:idx+self.sequence_length],
+            self.data[idx+self.sequence_length]
+        )
+
+class LSTM(nn.Module):
+    def __init__(self, input_size, hidden_size, num_layers):
+        super(LSTM, self).__init__()
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
+        
+        self.lstm = nn.LSTM(
+            input_size=input_size,
+            hidden_size=hidden_size,
+            num_layers=num_layers,
+            batch_first=True
+        )
+        
+        self.fc = nn.Linear(hidden_size, 1)
+    
+    def forward(self, x):
+        # Initialize hidden state with zeros
+        h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device)
+        # Initialize cell state
+        c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device)
+        
+        # Forward propagate LSTM
+        out, _ = self.lstm(x, (h0, c0))
+        
+        # Decode the hidden state of the last time step
+        out = self.fc(out[:, -1, :])
+        return out
+
+def train_model(model, train_loader, criterion, optimizer, num_epochs):
+    model.train()
+    for epoch in range(num_epochs):
+        total_loss = 0
+        for batch_x, batch_y in train_loader:
+            batch_x = batch_x.unsqueeze(-1) # Ensure batch_x is 3-D: (batch_size, sequence_length, input_size)
+            optimizer.zero_grad()
+            outputs = model(batch_x)
+            loss = criterion(outputs, batch_y.unsqueeze(1))
+            loss.backward()
+            optimizer.step()
+            total_loss += loss.item()
+        
+        print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {total_loss/len(train_loader):.4f}')
+
+# After evaluation
+def save_results_to_csv(predictions, actuals, ase, horizon_type="short"):
+    results_df = pd.DataFrame({
+        'Prediction': predictions,
+        'Actual': actuals,
+        'Error': [pred - act for pred, act in zip(predictions, actuals)]
+    })
+    
+    # Add summary statistics
+    summary_df = pd.DataFrame({
+        'Metric': ['ASE'],
+        'Value': [ase]
+    })
+    
+    # Save to CSV files
+    results_df.to_csv(f'predictions_{horizon_type}_term.csv', index=True)
+    summary_df.to_csv(f'metrics_{horizon_type}_term.csv', index=False)
+
+# Set seeds for reproducibility
+torch.manual_seed(42)
+np.random.seed(42)
+random.seed(42)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed(42)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+# Load and preprocess your data
+df = pd.read_csv('https://raw.githubusercontent.com/aabromowitz/TimeSeriersProject/refs/heads/main/MSPUS.csv')
+# import pdb
+#pdb.set_trace()
+data = df['MSPUS'].values[49:246]  # Select rows 49 through 245 inclusive
+
+# After loading data but before normalization
+data = np.log(data)  # Apply log transformation
+
+# After loading data but before creating datasets
+# Initialize the scaler
+scaler = MinMaxScaler()
+data_normalized = scaler.fit_transform(data.reshape(-1, 1)).flatten()
+
+# Define parameters
+# sequence_length = 10
+sequence_length = 8
+# sequence_length = 5
+hidden_size = 64
+# hidden_size = 128
+num_layers = 2
+# num_layers = 3
+batch_size = 32
+# batch_size = 16
+num_epochs = 100
+learning_rate = 0.01
+# learning_rate = 0.005
+h_short = 4
+h_long = 20
+
+# Create dataset and dataloader
+# dataset = TimeSeriesDataset(data, sequence_length)
+# train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+
+# Split data into train and test
+train_data = data_normalized[:-h_short]  # All data except last h_short entries
+test_data = data_normalized[-sequence_length-h_short:]  # Last sequence_length + h_short entries
+
+# Create datasets and dataloaders
+train_dataset = TimeSeriesDataset(train_data, sequence_length)
+train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+test_dataset = TimeSeriesDataset(test_data, sequence_length)
+test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)
+
+# Initialize model, criterion, and optimizer
+model = LSTM(input_size=1, hidden_size=hidden_size, num_layers=num_layers)
+# model = LSTM(input_size=1, hidden_size=hidden_size, num_layers=num_layers, dropout=0.2)
+criterion = nn.MSELoss()
+optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+
+# Train the model
+train_model(model, train_loader, criterion, optimizer, num_epochs)
+
+# Add evaluation mode
+def evaluate_model(model, test_loader):
+    model.eval()
+    predictions = []
+    actuals = []
+    total_se = 0  # Initialize before the loop
+    n = 0  # Initialize before the loop
+    with torch.no_grad():
+        for batch_x, batch_y in test_loader:
+            batch_x = batch_x.unsqueeze(-1)  # Add this line to ensure 3D input
+            output = model(batch_x)
+            # Denormalize predictions and actuals
+            pred = scaler.inverse_transform(output.numpy())[0][0]
+            actual = scaler.inverse_transform(batch_y.numpy().reshape(-1, 1))[0][0]
+            predictions.append(pred)
+            actuals.append(actual)
+            # predictions.append(output.item())
+            # actuals.append(batch_y.item())
+
+            # Then un-log transform
+            pred = np.exp(pred)
+            actual = np.exp(actual)
+
+            # Calculate squared error for this prediction
+            se = (pred - actual) ** 2
+            total_se += se
+            n += 1
+            
+    ase = total_se / 1e6 / n if n > 0 else 0
+    return predictions, actuals, ase
+    # return predictions, actuals
+
+# Evaluate on test data
+# predictions, actuals = evaluate_model(model, test_loader)
+predictions, actuals, ase = evaluate_model(model, test_loader)
+print("\nTest Results for short term prediction:")
+for i, (pred, actual) in enumerate(zip(predictions, actuals)):
+    print(f"Prediction {i+1}: {pred:.2f}, Actual: {actual:.2f}")
+print(f"\nAverage Squared Error: {ase:,.2f}")
+
+# Save results
+save_results_to_csv(predictions, actuals, ase, "short")
+
+# Also do it with the long term evaluation
+train_data = data_normalized[:-h_long]  # All data except last h_long entries
+test_data = data_normalized[-sequence_length-h_long:]  # Last sequence_length + h_long entries
+train_dataset = TimeSeriesDataset(train_data, sequence_length)
+train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+test_dataset = TimeSeriesDataset(test_data, sequence_length)
+test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)
+train_model(model, train_loader, criterion, optimizer, num_epochs)
+predictions, actuals, ase = evaluate_model(model, test_loader)
+print("\nTest Results for long term prediction:")
+for i, (pred, actual) in enumerate(zip(predictions, actuals)):
+    print(f"Prediction {i+1}: {pred:.2f}, Actual: {actual:.2f}")
+print(f"\nAverage Squared Error: {ase:,.2f}")
+save_results_to_csv(predictions, actuals, ase, "long")
+```
+
+The short term prediction was the following:
+
+```{r LSTM short term predictions}
+file_path = "https://raw.githubusercontent.com/aabromowitz/TimeSeriersProject/refs/heads/main/LSTM_predictions_short_term.csv"
+pred <- read.csv(file_path, header = TRUE)
+pred
+x = fed_housing_data$Median_Sales_Price
+l = length(x)
+plot(seq(1,l,1),x,type="b")
+points(seq(l-h.short+1,l,1),pred$Prediction,type="b",pch=15,col="blue")
+```
+
+The short term ASE was 81.8 M.  This was slightly better than the ARIMA model.  Note that it is like our other ASEs, where it compares to the unlogged, original Medium Sales Prices.
+
+```{r LSTM short term ASE}
+file_path = "https://raw.githubusercontent.com/aabromowitz/TimeSeriersProject/refs/heads/main/LSTM_metrics_short_term.csv"
+ase <- read.csv(file_path, header = TRUE)
+ase
+```
+
+The long term prediction was the following:
+
+```{r LSTM long term predictions}
+file_path = "https://raw.githubusercontent.com/aabromowitz/TimeSeriersProject/refs/heads/main/LSTM_predictions_long_term.csv"
+pred <- read.csv(file_path, header = TRUE)
+pred
+plot(seq(1,l,1),x,type="b")
+points(seq(l-h.long+1,l,1),pred$Prediction,type="b",pch=15,col="blue")
+```
+
+The long term ASE was 149 M.  This was an order of magnitude better than the Signal Plus Noise model, which had the best long term ASE so far.  And the plot of the predictions (of the logged data) vs the actual values seems to line up almost exactly.
+
+```{r LSTM long term ASE}
+file_path = "https://raw.githubusercontent.com/aabromowitz/TimeSeriersProject/refs/heads/main/LSTM_metrics_long_term.csv"
+ase <- read.csv(file_path, header = TRUE)
+ase
+```
 

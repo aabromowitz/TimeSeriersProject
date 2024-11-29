@@ -660,6 +660,20 @@ f = fore.sigplusnoise.wge(x,max.p=10,n.ahead=h.long,lastn=TRUE)
 ase = mean((x[(l-h.long+1):l]-f$f)^2)
 ase # 10014.69
 
+# Looking at residuals
+f = fore.sigplusnoise.wge(x,max.p=0,n.ahead=h.short,lastn=TRUE)
+aic5.ar.wge(f$resid,p=0:20)
+
+# signal plus noise, map.p = 9
+roll.win.rmse.linplusnoise.ada(x,h.short,max.p=9) # 4.884276
+roll.win.rmse.linplusnoise.ada(x,h.long,max.p=9) # 23.35254
+f = fore.sigplusnoise.wge(x,max.p=9,n.ahead=h.short,lastn=TRUE)
+ase = mean((x[(l-h.short+1):l]-f$f)^2)
+ase # 161.2832
+f = fore.sigplusnoise.wge(x,max.p=9,n.ahead=h.long,lastn=TRUE)
+ase = mean((x[(l-h.long+1):l]-f$f)^2)
+ase # 10014.69
+
 # MLP
 # d= 0, 5 hidden nodes
 set.seed(10)

@@ -93,6 +93,7 @@ VARselect(x,lag.max=8,type="both",season=NULL,exogen=NULL) # AIC = 4, SC/BIC = 1
 VARselect(x,lag.max=10,type="both",season=NULL,exogen=NULL) # AIC = 4, SC/BIC = 1
 VARselect(x,lag.max=12,type="both",season=NULL,exogen=NULL) # AIC = 4, SC/BIC = 1
 VARselect(x,lag.max=16,type="both",season=NULL,exogen=NULL) # AIC = 4, SC/BIC = 1
+VARselect(x,lag.max=24,type="both",season=NULL,exogen=NULL) # AIC = 4, SC/BIC = 1
 # Candidates: 4, 1, 2
 
 # lag = 4
@@ -139,6 +140,22 @@ fanchart(preds)
 preds=predict(fit,n.ahead=h.long)
 ase = mean((fed_housing_data_NL$Median_Sales_Price[(l-h.long+1):l]-exp(preds$fcst$Median_Sales_Price[,1]))^2)/1e6
 ase # 4297.166
+plot(seq(1,l,1),x$Median_Sales_Price,type="b")
+points(seq(l-h.long+1,l,1),preds$fcst$Median_Sales_Price[1:h.long,1],type="b",pch=15)
+fanchart(preds)
+
+# lag = 24
+fit = VAR(x,p=24,type='both') 
+summary(fit) # trend and const were significant, but only lag up to 2 for variable of interest
+preds=predict(fit,n.ahead=h.short)
+ase = mean((fed_housing_data_NL$Median_Sales_Price[(l-h.short+1):l]-exp(preds$fcst$Median_Sales_Price[,1]))^2)/1e6
+ase # 2177.036
+plot(seq(1,l,1),x$Median_Sales_Price,type="b")
+points(seq(l-h.short+1,l,1),preds$fcst$Median_Sales_Price[1:h.short,1],type="b",pch=15)
+fanchart(preds)
+preds=predict(fit,n.ahead=h.long)
+ase = mean((fed_housing_data_NL$Median_Sales_Price[(l-h.long+1):l]-exp(preds$fcst$Median_Sales_Price[,1]))^2)/1e6
+ase # 19535.52
 plot(seq(1,l,1),x$Median_Sales_Price,type="b")
 points(seq(l-h.long+1,l,1),preds$fcst$Median_Sales_Price[1:h.long,1],type="b",pch=15)
 fanchart(preds)
@@ -417,6 +434,15 @@ ase = mean((fed_housing_data_NL$Median_Sales_Price[t.test.long]-exp(preds$pred))
 ase # 2534.7
 plot(seq(1,l,1),x.long$Median_Sales_Price,type="b")
 points(seq((l-h.long+1),l,1),preds$pred,type="b",pch=15)
+
+# I forget, how were the errors for the signal plus noise models?
+x = fed_housing_data$Median_Sales_Price
+f = fore.sigplusnoise.wge(x,linear=TRUE,max.p=6,n.ahead=h.short,lastn=TRUE)
+ase = mean((fed_housing_data_NL$Median_Sales_Price[(l-h.short+1):l]-exp(f$f))^2)/1e6
+ase # 50.91791
+f = fore.sigplusnoise.wge(x,linear=TRUE,max.p=6,n.ahead=h.long,lastn=TRUE)
+ase = mean((fed_housing_data_NL$Median_Sales_Price[(l-h.long+1):l]-exp(f$f))^2)/1e6
+ase # 1104.897
 
 ################################################################################
 
