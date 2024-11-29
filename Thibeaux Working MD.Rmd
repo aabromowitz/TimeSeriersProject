@@ -16,6 +16,7 @@ library(tidyverse)
 library(tswge)
 library(vars)
 library(lubridate)
+library(nnfor)
 ```
 # Load Data
 ```{r Load and wrangle data}
@@ -104,7 +105,7 @@ summary(fed_housing_data)
 ### Test for linear Trend
 ```{r Test for linear trend}
 # Testing for Linear Trend
-t = 1:198
+t = 1:168
 reg = slr.wge(train$Median_Sales_Price)
 
 # Cochran Orcutt Test for Linear Trend
@@ -356,7 +357,7 @@ plot(fit.mle.sig_h20$resid)
 # ASE with MLE estimates
 ASE.h20 = mean((log.mhp[179:198] - fit.mle.sig_h20$f)^2)
 ASEexp.h20 = mean((exp(log.mhp[179:198]) - exp(fit.mle.sig_h20$f))^2)
-ASEexp.h20 # 50.92M
+ASEexp.h20 # 1.1B
 
 # Fit with burg estimates, using all data
 fit.b.sig_h20 = fore.sigplusnoise.wge(log.mhp, linear = TRUE, method = 'burg', freq = 0, max.p = 6, n.ahead = 20, lastn = TRUE)
@@ -600,5 +601,128 @@ fit.mle.sig_h20_ahead$ul[20]
 fit.mle.sig_h20_ahead$f[20]
 ```
 
+## Neural Net (MLP)
+
+MLP
+```{r MLP}
+# Univariate
+
+msp.194 = ts(log.mhp[1:194])
+msp.186 = ts(log.mhp[1:186])
+msp.178 = ts(log.mhp[1:178])
+
+# 1 Year Horizon
+mspFit.4 = mlp(msp.194)
+f.4 = forecast(mspFit.4, h = 4)
+plot(log.mhp[195:198], type = 'l', ylim = c(12.9, 13))
+lines(seq(1,4), f.4$mean, col = "blue")
+ASE.mlp.exp.h4 = mean((exp(log.mhp[195:198]) - exp(f.4$mean))^2)
+ASE.mlp.exp.h4 # 91.51M
+rwfit.mlp4 = roll.win.rmse.nn.wge(log.mhp, horizon = 4, fit_model = mspFit.4)
+
+# 3 Year Horizon
+mspFit.12 = mlp(msp.186)
+f.12 = forecast(mspFit.12, h = 12)
+plot(log.mhp[187:198], type = 'l', ylim = c(12.75, 13))
+lines(seq(1,12), f.12$mean, col = "blue")
+ASE.mlp.exp.h12 = mean((exp(log.mhp[187:198]) - exp(f.12$mean))^2)
+ASE.mlp.exp.h12 # 949.55N
+rwfit.mlp12 = roll.win.rmse.nn.wge(log.mhp, horizon = 12, fit_model = mspFit.12)
+
+# 5 Year Horizon
+mspFit.20 = mlp(msp.178)
+f.20 = forecast(mspFit.20, h = 20)
+plot(log.mhp[179:198], type = 'l', ylim = c(12.5, 13))
+lines(seq(1,20), f.20$mean, col = "blue")
+ASE.mlp.exp.h20 = mean((exp(log.mhp[195:198]) - exp(f.20$mean))^2)
+ASE.mlp.exp.h20 # 5.43B
+rwfit.mlp20 = roll.win.rmse.nn.wge(log.mhp, horizon = 20, fit_model = mspFit.20)
+
+plot(log.mhp, type = 'l')
+points(seq(195,198), f.4$mean, type = 'l', col = 'red', pch = 3)
+points(seq(187,198), f.12$mean, type = 'l', col = 'darkorange', pch = 3)
+points(seq(179,198), f.20$mean, type = 'l', col = 'green', pch = 3)
+
+# Multivariate
+
+ts.X = data.frame(hor = ts(fed_housing_data$Ownership_Rate), huc = ts(fed_housing_data$Housing_Units_Completed), snh = ts(fed_housing_data$Supply_New_Houses), hpi = ts(fed_housing_data$Housing_Price_Index))
+
+# Default predictions, 1 Yr Horizon
+mspFit.xreg.4 = mlp(msp.194, xreg = ts.X)
+f.xreg.4 = forecast(mspFit.xreg.4, h = 4, xreg = ts.X)
+plot(log.mhp[195:198], type = 'l', ylim = c(12.75, 13.2))
+lines(seq(1,4), f.xreg.4$mean, col = "blue")
+ASE.x.4 = mean((log.mhp[195:198]-f.xreg.4$mean)^2)
+ASE.x.4
+ASE.mlp.exp.x.h4 = mean((exp(log.mhp[195:198]) - exp(f.xreg.4$mean))^2)
+ASE.mlp.exp.x.h4 # 29.48M
+RMSE.x.4 = sqrt(mean((log.mhp[195:198] - f.xreg.4$mean))^2)
+RMSE.x.4
+
+# Default predictions, 3 Yr Horizon
+mspFit.xreg.12 = mlp(msp.186, xreg = ts.X)
+f.xreg.12 = forecast(mspFit.xreg.12, h = 12, xreg = ts.X)
+plot(log.mhp[187:198], type = 'l', ylim = c(12.75, 13.2))
+lines(seq(1,12), f.xreg.12$mean, col = "blue")
+ASE.mlp.exp.x.h12 = mean((exp(log.mhp[187:198]) - exp(f.xreg.12$mean))^2)
+ASE.mlp.exp.x.h12 # 1.31b
+RMSE.x.12 = sqrt(mean((log.mhp[187:198] - f.xreg.12$mean))^2)
+RMSE.x.12
+
+# Default predictions, 5 yr Horizon
+mspFit.xreg.20 = mlp(msp.178, xreg = ts.X)
+f.xreg.20 = forecast(mspFit.xreg.20, h = 20, xreg = ts.X)
+plot(log.mhp[179:198], type = 'l', ylim = c(12.3, 13.1))
+lines(seq(1,20), f.xreg.20$mean, col = "blue")
+ASE.mlp.exp.x.h20 = mean((exp(log.mhp[179:198]) - exp(f.xreg.20$mean))^2)
+ASE.mlp.exp.x.h20 # 18.16B
+RMSE.x.20 = sqrt(mean((log.mhp[179:198] - f.xreg.20$mean))^2)
+RMSE.x.20
+
+plot(log.mhp, type = 'l')
+points(seq(195,198), f.xreg.4$mean, type = 'l', col = 'red', pch = 3)
+points(seq(187,198), f.xreg.12$mean, type = 'l', col = 'darkorange', pch = 3)
+points(seq(179,198), f.xreg.20$mean, type = 'l', col = 'green', pch = 3)
+
+t.186 = ts(fed_housing_data$Year_Quarter[1:186])
+t.178 = ts(fed_housing_data$Year_Quarter[1:178])
+
+hor.186 = ts(fed_housing_data$Ownership_Rate[1:186])
+hor.178 = ts(fed_housing_data$Ownership_Rate[1:178])
+
+huc.186 = ts(fed_housing_data$Housing_Units_Completed[1:186])
+huc.178 = ts(fed_housing_data$Housing_Units_Completed[1:178])
+
+snh.186 = ts(fed_housing_data$Supply_New_Houses[1:186])
+snh.178 = ts(fed_housing_data$Supply_New_Houses[1:178])
+
+hpi.186 = ts(fed_housing_data$Housing_Price_Index[1:186])
+hpi.178 = ts(fed_housing_data$Housing_Price_Index[1:178])
+
+# Forecasting next year
+#fit.mlp.
+#mspFore.xreg.4 = mlp(ts(log.mhp), xreg = ts.X)
+#fore.4 = forecast(mspFore.xreg.4, h = 4)
+
+#plot(log.mhp[1:198], type = 'l', xlim = c(1,202))
+#lines(seq(199,202), fore.4$mean, col = "blue")
+
+# Forecasting 5 years
+mspFore.20 = mlp(ts(log.mhp))
+fore.20 = forecast(mspFore.20, h = 20)
+
+plot(log.mhp[1:198], type = 'l', xlim = c(1,218), ylim = c(10.5,13.1))
+lines(seq(199,218), fore.20$mean, col = "blue")
 
 
+```
+## Evaluate the Model
+
+```{r}
+
+# Look at White Noise
+resid.4 = 
+plotts.sample.wge(fit.mle.sig_notTT$resid, lag.max = 48, arlimits = TRUE)
+ljung.wge(fit.mle.sig_notTT$resid, p = 6, q = 0, K = 48)
+
+```
