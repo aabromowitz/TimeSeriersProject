@@ -105,7 +105,7 @@ summary(fed_housing_data)
 ### Test for linear Trend
 ```{r Test for linear trend}
 # Testing for Linear Trend
-t = 1:168
+t = 1:198
 reg = slr.wge(train$Median_Sales_Price)
 
 # Cochran Orcutt Test for Linear Trend
@@ -357,7 +357,7 @@ plot(fit.mle.sig_h20$resid)
 # ASE with MLE estimates
 ASE.h20 = mean((log.mhp[179:198] - fit.mle.sig_h20$f)^2)
 ASEexp.h20 = mean((exp(log.mhp[179:198]) - exp(fit.mle.sig_h20$f))^2)
-ASEexp.h20 # 1.1B
+ASEexp.h20 # 50.92M
 
 # Fit with burg estimates, using all data
 fit.b.sig_h20 = fore.sigplusnoise.wge(log.mhp, linear = TRUE, method = 'burg', freq = 0, max.p = 6, n.ahead = 20, lastn = TRUE)
@@ -984,7 +984,6 @@ f.xreg.d2.20 = forecast(mlpFit.xreg.d2.20, h = 20, xreg = ts.all.X.20)
 plot(log.mhp[1:198], type = 'l', xlim = c(1,218), ylim = c(10.5, 13.25))
 lines(seq(199,202), f.xreg.4$mean, col = "green")
 lines(seq(199,218), f.xreg.d2.20$mean, col = "darkorange")
-
 ```
 ## Evaluate the Model
 
