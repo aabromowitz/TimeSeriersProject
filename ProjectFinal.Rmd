@@ -928,7 +928,7 @@ for( i in 1: sims)
 
 ## Model Choice
 
-While the burg estimates had a lower AIC than the MLE estimates, the MLE method of forecasting had better ASE and better rolling window RMSE for all three forecasts (1 yr, 3 yr, and 5 yr)
+The MLE estimates for forecasting had better ASE and better rolling window RMSE for all three forecasts (1 yr, 3 yr, and 5 yr)
 
 Our final Signal Plus Noise Model is Xt = 10.871 + .011t + zt, where (1 - .716B - .367B2 - 0.137B3 + 0.062B4 + .076B5 + .118B5)Zt with sigma2 = 0.0006929526
 
@@ -1757,10 +1757,12 @@ points(seq(31,50), forecasted.mlp.X.d2.20$mean, type = 'l', col = 'red', pch = 3
 
 ```
 ### Multivariate Forecasting
+
 ```{r Multivariate Forecasting}
 
 # Refit the model using all the data
-ts.X = data.frame(hor = ts(fed_housing_data$Ownership_Rate), huc = ts(fed_housing_data$Housing_Units_Completed), snh = ts(fed_housing_data$Supply_New_Houses), hpi = ts(fed_housing_data$Housing_Price_Index))
+ts.X = data.frame(hor = ts(fed_housing_data$Ownership_Rate), huc = ts(fed_housing_data$Housing_Units_Completed), 
+                  snh = ts(fed_housing_data$Supply_New_Houses), hpi = ts(fed_housing_data$Housing_Price_Index))
 
 # Forecasting Exogenous Variables
 fit.mlp.hor = mlp(ts(ts.X$hor), reps = 30, comb = 'median')
@@ -1786,9 +1788,9 @@ ts.all.X.4 = data.frame(hor = ts(c(ts.X$hor, fore.mlp.hor.4$mean)), huc = ts(c(t
 ts.all.X.20 = data.frame(hor = ts(c(ts.X$hor, fore.mlp.hor.20$mean)), huc = ts(c(ts.X$hor, fore.mlp.huc.20$mean)), 
                          snh = ts(c(ts.X$hor, fore.mlp.snh.20$mean)), hpi = ts(c(ts.X$hor, fore.mlp.hpi.20$mean)))
 
-# Default predictions, 1 Yr Horizon
-mlpFit.xreg.4 = mlp(ts(log.mhp), comb = 'median', xreg = ts.X)
-f.xreg.4 = forecast(mlpFit.xreg.4, h = 4, xreg = ts.all.X.4)
+# Difforder = 1 predictions, 1 Yr Horizon
+mlpFit.xreg.d1.4 = mlp(ts(log.mhp), comb = 'median', difforder = 1, xreg = ts.X)
+f.xreg.d1.4 = forecast(mlpFit.xreg.d1.4, h = 4, xreg = ts.all.X.4)
 
 # Difforder = 2 predictions, 5 yr Horizon
 mlpFit.xreg.d2.20 = mlp(ts(log.mhp), comb = 'median', difforder = 2, xreg = ts.X)
@@ -1796,11 +1798,17 @@ f.xreg.d2.20 = forecast(mlpFit.xreg.d2.20, h = 20, xreg = ts.all.X.20)
 
 # Forecasting next year and 5 years
 plot(log.mhp[1:198], type = 'l', xlim = c(1,218), ylim = c(10.5, 13.25))
-lines(seq(199,202), f.xreg.4$mean, col = "red")
+lines(seq(199,202), f.xreg.d1.4$mean, col = "red")
 lines(seq(199,218), f.xreg.d2.20$mean, col = "red")
 ```
 
 ## Evaluate the Model
+
+Wording: 
+
+In 1 year, we are 95% confident that the median home sale price will be between $X (e^X) and $X (e^X). Our best estimate is $415,169 (e^12.93644).
+
+In 5 years, we are 95% confident that the median home sale price will be between $X (e^X) and $X (e^X). Our best estimate is $547,463 (e^13.21305).
 
 ```{r}
 
@@ -1815,6 +1823,10 @@ plot(resid.mlp.20)
 acf(resid.mlp.20)
 hist(resid.mlp.20)
 plotts.sample.wge(resid.mlp.20, arlimits = TRUE)
+
+# Values for 1 yr and 5 yr Forecast
+f.xreg.d1.4$mean[4]
+f.xreg.d2.20$mean[20]
 
 ```
 
