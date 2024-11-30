@@ -1494,6 +1494,124 @@ fit.mlp.x.d1.4
 
 ```
 
+
+
+## Assessing the Models
+
+```{r Assessing mlp models}
+# 1 Year Models
+plot(log.mhp[195:198], type = 'l', ylim = c(12.75, 13.2), lwd = 3, main = "Actual Values vs. Univariate and Multivariate MLP 1 Year forecasts")
+lines(seq(1,4), f.4$mean, col = "purple")
+lines(seq(1,4), forecasted.mlp.X.4$mean, col = "blue")
+lines(seq(1,4), forecasted.mlp.X.d0.4$mean, col = "red")
+lines(seq(1,4), forecasted.mlp.X.d1.4$mean, col = "orange")
+lines(seq(1,4), forecasted.mlp.X.d2.4$mean, col = "green")
+
+# Default Model
+ASE.mlp.exp.x.h4 = mean((exp(log.mhp[195:198]) - exp(forecasted.mlp.X.4$mean))^2) # 429M
+RMSE.baseline.x.4 = sqrt(mean((mhp.test.4 - forecasted.mlp.X.4$mean)^2)) # 0.048
+
+# Difforder = 0 Model
+ASE.mlp.exp.x.d0.h4 = mean((exp(log.mhp[195:198]) - exp(forecasted.mlp.X.d0.4$mean))^2) # 858M
+RMSE.x.d0.4 = sqrt(mean((mhp.test.4 - forecasted.mlp.X.d0.4$mean)^2)) # 0.067
+
+# Difforder = 1 Model
+ASE.mlp.exp.x.d1.h4 = mean((exp(log.mhp[195:198]) - exp(forecasted.mlp.X.d1.4$mean))^2) #169M
+RMSE.x.d1.4 = sqrt(mean((mhp.test.4 - forecasted.mlp.X.d1.4$mean)^2)) # 0.0305
+
+# Difforder = 2 Model
+ASE.mlp.exp.x.d2.h4 = mean((exp(log.mhp[195:198]) - exp(forecasted.mlp.X.d2.4$mean))^2) # 425M
+RMSE.x.d2.4 = sqrt(mean((mhp.test.4 - forecasted.mlp.X.d2.4$mean)^2)) # 0.0478
+
+# 5 Yr Models
+plot(log.mhp[179:198], type = 'l', ylim = c(12.3, 13.1), lwd = 3, main = "Actual Values vs. Univariate and Multivariate MLP 5 Year forecasts")
+lines(seq(1,20), f.20$mean, col = "purple")
+lines(seq(1,20), forecasted.mlp.X.20$mean, col = "blue")
+lines(seq(1,20), forecasted.mlp.X.d0.20$mean, col = "red")
+lines(seq(1,20), forecasted.mlp.X.d1.20$mean, col = "orange")
+lines(seq(1,20), forecasted.mlp.X.d2.20$mean, col = "green")
+
+# Baseline Model
+ASE.mlp.exp.x.h20 = mean((exp(log.mhp[179:198]) - exp(forecasted.mlp.X.20$mean))^2) #11.55B
+RMSE.baseline.x.20 = sqrt(mean((mhp.test.20 - forecasted.mlp.X.20$mean)^2)) # 0.3062
+
+# Diff Order 0 Model
+ASE.mlp.exp.x.d0.h20 = mean((exp(log.mhp[179:198]) - exp(forecasted.mlp.X.d0.20$mean))^2) # 12.8B
+RMSE.x.d0.20 = sqrt(mean((mhp.test.20 - forecasted.mlp.X.d0.20$mean)^2)) # 0.327
+
+# Diff Order 1 Model
+ASE.mlp.exp.x.d1.h20 = mean((exp(log.mhp[179:198]) - exp(forecasted.mlp.X.d1.20$mean))^2) # 14.86B
+RMSE.x.d1.20 = sqrt(mean((mhp.test.20 - forecasted.mlp.X.d1.20$mean)^2)) # 0.3593
+
+# Diff Order 2 Model
+ASE.mlp.exp.x.d2.h20 = mean((exp(log.mhp[179:198]) - exp(forecasted.mlp.X.d2.20$mean))^2) # 8.437B
+RMSE.x.d2.20 = sqrt(mean((mhp.test.20 - forecasted.mlp.X.d2.20$mean)^2)) # 0.253
+
+# Create table for comparison
+labels = c("Defaults", "DiffOrder = 0", "DiffOrder = 1", "DiffOrder = 2")
+ASE_4 = c(ASE.mlp.exp.x.h4, ASE.mlp.exp.x.d0.h4, ASE.mlp.exp.x.d1.h4, ASE.mlp.exp.x.d2.h4)
+ASE_20 = c(ASE.mlp.exp.x.h20, ASE.mlp.exp.x.d0.h20, ASE.mlp.exp.x.d1.h20, ASE.mlp.exp.x.d2.h20)
+RMSE_4 = c(RMSE.baseline.x.4,RMSE.x.d0.4,RMSE.x.d1.4,RMSE.x.d2.4) 
+RMSE_20 = c(RMSE.baseline.x.20,RMSE.x.d0.20,RMSE.x.d1.20,RMSE.x.d2.20) 
+comparison = data.frame(Metrics = labels, ASE_1_yr = ASE_4, ASE_5_Yr = ASE_20, RMSE_1_Yr = RMSE_4, RMSE_5_Yr = RMSE_20)
+comparison
+
+# Best Multivariate Models
+plot(log.mhp, type = 'l')
+points(seq(195,198), forecasted.mlp.X.d1.4$mean, type = 'l', col = 'red', pch = 3)
+points(seq(179,198), forecasted.mlp.X.d2.20$mean, type = 'l', col = 'red', pch = 3)
+
+# Best Multivariate Models Zoomed In
+plot(log.mhp[149:198], type = 'l', main = "Multivariate MLP Forecast for last 1 & 5 Years")
+points(seq(47,50), forecasted.mlp.X.d1.4$mean, type = 'l', col = 'red', pch = 3)
+points(seq(31,50), forecasted.mlp.X.d2.20$mean, type = 'l', col = 'red', pch = 3)
+
+```
+### Multivariate Forecasting
+
+```{r Multivariate Forecasting}
+
+# Refit the model using all the data
+ts.X = data.frame(hor = ts(fed_housing_data$Ownership_Rate), huc = ts(fed_housing_data$Housing_Units_Completed), 
+                  snh = ts(fed_housing_data$Supply_New_Houses), hpi = ts(fed_housing_data$Housing_Price_Index))
+
+# Forecasting Exogenous Variables
+fit.mlp.hor = mlp(ts(ts.X$hor), reps = 30, comb = 'median')
+fore.mlp.hor.4 = forecast(fit.mlp.hor, h = 4)
+fore.mlp.hor.20 = forecast(fit.mlp.hor, h = 20)
+
+fit.mlp.huc = mlp(ts(ts.X$huc), reps = 30, comb = 'median')
+fore.mlp.huc.4 = forecast(fit.mlp.huc, h = 4)
+fore.mlp.huc.20 = forecast(fit.mlp.huc, h = 20)
+
+fit.mlp.snh = mlp(ts(ts.X$snh), reps = 30, comb = 'median')
+fore.mlp.snh.4 = forecast(fit.mlp.snh, h = 4)
+fore.mlp.snh.20 = forecast(fit.mlp.snh, h = 20)
+
+fit.mlp.hpi = mlp(ts(ts.X$hpi), reps = 30, comb = 'median')
+fore.mlp.hpi.4 = forecast(fit.mlp.hpi, h = 4)
+fore.mlp.hpi.20 = forecast(fit.mlp.hpi, h = 20)
+
+# Known and Forecasted Dataframe for xreg
+ts.all.X.4 = data.frame(hor = ts(c(ts.X$hor, fore.mlp.hor.4$mean)), huc = ts(c(ts.X$huc, fore.mlp.huc.4$mean)), 
+                         snh = ts(c(ts.X$snh, fore.mlp.snh.4$mean)), hpi = ts(c(ts.X$hpi, fore.mlp.hpi.4$mean)))
+
+ts.all.X.20 = data.frame(hor = ts(c(ts.X$hor, fore.mlp.hor.20$mean)), huc = ts(c(ts.X$hor, fore.mlp.huc.20$mean)), 
+                         snh = ts(c(ts.X$hor, fore.mlp.snh.20$mean)), hpi = ts(c(ts.X$hor, fore.mlp.hpi.20$mean)))
+
+# Difforder = 1 predictions, 1 Yr Horizon
+mlpFit.xreg.d1.4 = mlp(ts(log.mhp), comb = 'median', difforder = 1, xreg = ts.X)
+f.xreg.d1.4 = forecast(mlpFit.xreg.d1.4, h = 4, xreg = ts.all.X.4)
+
+# Difforder = 2 predictions, 5 yr Horizon
+mlpFit.xreg.d2.20 = mlp(ts(log.mhp), comb = 'median', difforder = 2, xreg = ts.X)
+f.xreg.d2.20 = forecast(mlpFit.xreg.d2.20, h = 20, xreg = ts.all.X.20)
+
+# Forecasting next year and 5 years
+plot(log.mhp[1:198], type = 'l', xlim = c(1,218), ylim = c(10.5, 13.25))
+lines(seq(199,202), f.xreg.d1.4$mean, col = "red")
+lines(seq(199,218), f.xreg.d2.20$mean, col = "red")
+```
 ## Confidence Intervals for Multivariate Models
 
 Still working on getting code to work - 
@@ -1510,6 +1628,10 @@ mhp <- read.csv(file_path, header = TRUE)
 mhp_1975 = mhp[49:246,]
 xt = log(mhp_1975$MSPUS)
 
+# Exogenous Variables in a DF
+ts.X = data.frame(hor = ts(fed_housing_data$Ownership_Rate), huc = ts(fed_housing_data$Housing_Units_Completed), 
+                  snh = ts(fed_housing_data$Supply_New_Houses), hpi = ts(fed_housing_data$Housing_Price_Index))
+
 # Horizon = 4
 h.long = 4
 l = length(xt)
@@ -1518,7 +1640,7 @@ xtTrain = xt[1:(l-h.long)]
 # est = est.arma.wge(xtTrain,p = 1)
 library(nnfor)
 set.seed(30)
-fit.mlp = mlp(ts(xt)) #mlp(ts(xtTrain), comb = 'median', xreg = ts.train.X.4, sel.lag = TRUE)
+fit.mlp = mlp(ts(xt)) # mlp(ts(xt), comb = 'median', xreg = ts.X, difforder = 1, sel.lag = TRUE) 
 ###### Error in newdata[, object$model.list$variables] : subscript out of bounds ####
 lf = length(fit.mlp$fitted)
 res = xt[(l-lf+1):l]-fit.mlp$fitted
@@ -1683,123 +1805,6 @@ plot(log.mhp[149:198], type = 'l', main = 'Multivariate MLP 5 Year Forecast with
 lines(seq(31,50,1),percentiles_per_column[,1], lty = 3, col = "blue")
 lines(seq(31,50,1),percentiles_per_column[,2], lty = 3, col = "blue")
 lines(seq(31,50,1),xtNewForBS, col = "red")
-```
-
-## Assessing the Models
-
-```{r Assessing mlp models}
-# 1 Year Models
-plot(log.mhp[195:198], type = 'l', ylim = c(12.75, 13.2), lwd = 3, main = "Actual Values vs. Univariate and Multivariate MLP 1 Year forecasts")
-lines(seq(1,4), f.4$mean, col = "purple")
-lines(seq(1,4), forecasted.mlp.X.4$mean, col = "blue")
-lines(seq(1,4), forecasted.mlp.X.d0.4$mean, col = "red")
-lines(seq(1,4), forecasted.mlp.X.d1.4$mean, col = "orange")
-lines(seq(1,4), forecasted.mlp.X.d2.4$mean, col = "green")
-
-# Default Model
-ASE.mlp.exp.x.h4 = mean((exp(log.mhp[195:198]) - exp(forecasted.mlp.X.4$mean))^2) # 429M
-RMSE.baseline.x.4 = sqrt(mean((mhp.test.4 - forecasted.mlp.X.4$mean)^2)) # 0.048
-
-# Difforder = 0 Model
-ASE.mlp.exp.x.d0.h4 = mean((exp(log.mhp[195:198]) - exp(forecasted.mlp.X.d0.4$mean))^2) # 858M
-RMSE.x.d0.4 = sqrt(mean((mhp.test.4 - forecasted.mlp.X.d0.4$mean)^2)) # 0.067
-
-# Difforder = 1 Model
-ASE.mlp.exp.x.d1.h4 = mean((exp(log.mhp[195:198]) - exp(forecasted.mlp.X.d1.4$mean))^2) #169M
-RMSE.x.d1.4 = sqrt(mean((mhp.test.4 - forecasted.mlp.X.d1.4$mean)^2)) # 0.0305
-
-# Difforder = 2 Model
-ASE.mlp.exp.x.d2.h4 = mean((exp(log.mhp[195:198]) - exp(forecasted.mlp.X.d2.4$mean))^2) # 425M
-RMSE.x.d2.4 = sqrt(mean((mhp.test.4 - forecasted.mlp.X.d2.4$mean)^2)) # 0.0478
-
-# 5 Yr Models
-plot(log.mhp[179:198], type = 'l', ylim = c(12.3, 13.1), lwd = 3, main = "Actual Values vs. Univariate and Multivariate MLP 5 Year forecasts")
-lines(seq(1,20), f.20$mean, col = "purple")
-lines(seq(1,20), forecasted.mlp.X.20$mean, col = "blue")
-lines(seq(1,20), forecasted.mlp.X.d0.20$mean, col = "red")
-lines(seq(1,20), forecasted.mlp.X.d1.20$mean, col = "orange")
-lines(seq(1,20), forecasted.mlp.X.d2.20$mean, col = "green")
-
-# Baseline Model
-ASE.mlp.exp.x.h20 = mean((exp(log.mhp[179:198]) - exp(forecasted.mlp.X.20$mean))^2) #11.55B
-RMSE.baseline.x.20 = sqrt(mean((mhp.test.20 - forecasted.mlp.X.20$mean)^2)) # 0.3062
-
-# Diff Order 0 Model
-ASE.mlp.exp.x.d0.h20 = mean((exp(log.mhp[179:198]) - exp(forecasted.mlp.X.d0.20$mean))^2) # 12.8B
-RMSE.x.d0.20 = sqrt(mean((mhp.test.20 - forecasted.mlp.X.d0.20$mean)^2)) # 0.327
-
-# Diff Order 1 Model
-ASE.mlp.exp.x.d1.h20 = mean((exp(log.mhp[179:198]) - exp(forecasted.mlp.X.d1.20$mean))^2) # 14.86B
-RMSE.x.d1.20 = sqrt(mean((mhp.test.20 - forecasted.mlp.X.d1.20$mean)^2)) # 0.3593
-
-# Diff Order 2 Model
-ASE.mlp.exp.x.d2.h20 = mean((exp(log.mhp[179:198]) - exp(forecasted.mlp.X.d2.20$mean))^2) # 8.437B
-RMSE.x.d2.20 = sqrt(mean((mhp.test.20 - forecasted.mlp.X.d2.20$mean)^2)) # 0.253
-
-# Create table for comparison
-labels = c("Defaults", "DiffOrder = 0", "DiffOrder = 1", "DiffOrder = 2")
-ASE_4 = c(ASE.mlp.exp.x.h4, ASE.mlp.exp.x.d0.h4, ASE.mlp.exp.x.d1.h4, ASE.mlp.exp.x.d2.h4)
-ASE_20 = c(ASE.mlp.exp.x.h20, ASE.mlp.exp.x.d0.h20, ASE.mlp.exp.x.d1.h20, ASE.mlp.exp.x.d2.h20)
-RMSE_4 = c(RMSE.baseline.x.4,RMSE.x.d0.4,RMSE.x.d1.4,RMSE.x.d2.4) 
-RMSE_20 = c(RMSE.baseline.x.20,RMSE.x.d0.20,RMSE.x.d1.20,RMSE.x.d2.20) 
-comparison = data.frame(Metrics = labels, ASE_1_yr = ASE_4, ASE_5_Yr = ASE_20, RMSE_1_Yr = RMSE_4, RMSE_5_Yr = RMSE_20)
-comparison
-
-# Best Multivariate Models
-plot(log.mhp, type = 'l')
-points(seq(195,198), forecasted.mlp.X.d1.4$mean, type = 'l', col = 'red', pch = 3)
-points(seq(179,198), forecasted.mlp.X.d2.20$mean, type = 'l', col = 'red', pch = 3)
-
-# Best Multivariate Models Zoomed In
-plot(log.mhp[149:198], type = 'l', main = "Multivariate MLP Forecast for last 1 & 5 Years")
-points(seq(47,50), forecasted.mlp.X.d1.4$mean, type = 'l', col = 'red', pch = 3)
-points(seq(31,50), forecasted.mlp.X.d2.20$mean, type = 'l', col = 'red', pch = 3)
-
-```
-### Multivariate Forecasting
-
-```{r Multivariate Forecasting}
-
-# Refit the model using all the data
-ts.X = data.frame(hor = ts(fed_housing_data$Ownership_Rate), huc = ts(fed_housing_data$Housing_Units_Completed), 
-                  snh = ts(fed_housing_data$Supply_New_Houses), hpi = ts(fed_housing_data$Housing_Price_Index))
-
-# Forecasting Exogenous Variables
-fit.mlp.hor = mlp(ts(ts.X$hor), reps = 30, comb = 'median')
-fore.mlp.hor.4 = forecast(fit.mlp.hor, h = 4)
-fore.mlp.hor.20 = forecast(fit.mlp.hor, h = 20)
-
-fit.mlp.huc = mlp(ts(ts.X$huc), reps = 30, comb = 'median')
-fore.mlp.huc.4 = forecast(fit.mlp.huc, h = 4)
-fore.mlp.huc.20 = forecast(fit.mlp.huc, h = 20)
-
-fit.mlp.snh = mlp(ts(ts.X$snh), reps = 30, comb = 'median')
-fore.mlp.snh.4 = forecast(fit.mlp.snh, h = 4)
-fore.mlp.snh.20 = forecast(fit.mlp.snh, h = 20)
-
-fit.mlp.hpi = mlp(ts(ts.X$hpi), reps = 30, comb = 'median')
-fore.mlp.hpi.4 = forecast(fit.mlp.hpi, h = 4)
-fore.mlp.hpi.20 = forecast(fit.mlp.hpi, h = 20)
-
-# Known and Forecasted Dataframe for xreg
-ts.all.X.4 = data.frame(hor = ts(c(ts.X$hor, fore.mlp.hor.4$mean)), huc = ts(c(ts.X$huc, fore.mlp.huc.4$mean)), 
-                         snh = ts(c(ts.X$snh, fore.mlp.snh.4$mean)), hpi = ts(c(ts.X$hpi, fore.mlp.hpi.4$mean)))
-
-ts.all.X.20 = data.frame(hor = ts(c(ts.X$hor, fore.mlp.hor.20$mean)), huc = ts(c(ts.X$hor, fore.mlp.huc.20$mean)), 
-                         snh = ts(c(ts.X$hor, fore.mlp.snh.20$mean)), hpi = ts(c(ts.X$hor, fore.mlp.hpi.20$mean)))
-
-# Difforder = 1 predictions, 1 Yr Horizon
-mlpFit.xreg.d1.4 = mlp(ts(log.mhp), comb = 'median', difforder = 1, xreg = ts.X)
-f.xreg.d1.4 = forecast(mlpFit.xreg.d1.4, h = 4, xreg = ts.all.X.4)
-
-# Difforder = 2 predictions, 5 yr Horizon
-mlpFit.xreg.d2.20 = mlp(ts(log.mhp), comb = 'median', difforder = 2, xreg = ts.X)
-f.xreg.d2.20 = forecast(mlpFit.xreg.d2.20, h = 20, xreg = ts.all.X.20)
-
-# Forecasting next year and 5 years
-plot(log.mhp[1:198], type = 'l', xlim = c(1,218), ylim = c(10.5, 13.25))
-lines(seq(199,202), f.xreg.d1.4$mean, col = "red")
-lines(seq(199,218), f.xreg.d2.20$mean, col = "red")
 ```
 
 ## Evaluate the Model
