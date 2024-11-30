@@ -17,6 +17,7 @@ library(tswge)
 library(vars)
 library(lubridate)
 library(vars)
+library(nnfor)
 ```
 
 # Load Data
@@ -637,6 +638,336 @@ f = fore.arima.wge(x,d=2,phi=m$model.coef,theta=est$theta,n.ahead=h.long,lastn=T
 hpi.pred.long = f$f
 fed_housing_data_short$Housing_Price_Index[(l-h.short+1):l] = hpi.pred.short
 fed_housing_data_long$Housing_Price_Index[(l-h.long+1):l] = hpi.pred.long
+```
+
+# Signal Plus Noise Model
+
+Our domain knowledge tells us that the positive trend of Median House Price is not random and does have an underlying regression line, but we can run a few tests for linear trend to be sure. We will test for linear trend using simple linear regression with a standard t-test, the Cochran Orcutt Test for Linear Trend, and the WBG Test (Woodward, Bottone, and Gray, 1997). All 3 tests have a p-value below 0.05, rejecting the null hypothesis. The residuals are not white noise yet, so we will fit an ARMA model along with the linear signal.
+
+### Test for linear Trend
+
+```{r Test for linear trend}
+# Testing for Linear Trend
+t = 1:168
+reg = slr.wge(train$Median_Sales_Price)
+summary(reg)
+
+# Cochran Orcutt Test for Linear Trend
+co_test_msp = co.wge(train$Median_Sales_Price)
+co_test_msp$pvalue
+
+# WBG Test
+wbg.boot.wge(train$Median_Sales_Price)
+
+# Linear model according to Simple Linear Regression (ignoring correlated errors)
+plotts.wge(train$Median_Sales_Price)
+fit = reg$b0hat + t*reg$b1hat
+points(fit, type = "l")
+
+# Examine Residuals
+resid = train$Median_Sales_Price - fit
+plot(resid, type = "p")
+abline(h=0)
+
+# Quicker way to plot residuals: plot(reg$res, type = "l")
+```
+### Choosing estimates for the ARMA portion of the Signal Plus Noise Model
+
+After comparing the MLE and Burg estimates on AIC, AICC, and BIC, we determined the MLE estimates were better for all three metrics. All estimates chose an AR(6), with the exception of the MLE estimate using the BIC, which chose an AR(2). We will move forward with the AR(6) model, compare the forecasts visually, and test whether the Average Square Error (ASE) is better for the MLE or the Burg estimates. The MLE estimates have better ASEs, as expected. While there isn't much difference visually between the two, the MLE lower limit (blue line) does contain the actual values, whereas the Burg lower limit (green line) are slightly more narrow and doesn't capture one of the actual values. Given the other evidence for using the MLE estimates, we will move forward with MLE estimates for an AR(6).
+
+```{r Signal Plus Noise models}
+# Fit signal plus noise models
+
+# MLE Estimates with AIC
+spn.mle.aic = aic.ar.wge(reg$res, type = 'aic', p = 0:7) # ar(6), aic -7.269686
+
+# MLE Estimates with AICC
+spn.mle.aicc = aic.ar.wge(reg$res, type = 'aicc', p = 0:7) # ar(6), aicc -6.25239
+
+# MLE Estimates with BIC
+spn.mle.bic = aic.ar.wge(reg$res, type = 'bic', p = 0:7) # ar(2), bic -7.147245
+
+# Burg Estimates with AIC
+spn.b.aic = aic.burg.wge(reg$res, p = 1:7, type = 'aic') # ar(6), aic -7.278742
+
+# Burg Estimates with AICC
+spn.b.aicc = aic.burg.wge(reg$res, p = 1:7, type = 'aicc') # ar(6), aicc -6.261446
+
+# Burg Estimates with BIC
+spn.b.bic = aic.burg.wge(reg$res, p = 1:7, type = 'bic') # ar(6), bic -7.157681
+
+# MLE estimates are better for all types: aic, aicc, bic - see comparison table
+
+# Fit with MLE estimates, train/test set
+fit.mle.sig = fore.sigplusnoise.wge(train$Median_Sales_Price, linear = TRUE, method = 'mle', freq = 0, max.p = 6, n.ahead = 30)
+
+# Examine residuals
+plot(fit.mle.sig$resid)
+
+# ASE with MLE estimates
+ASE = mean((test$Median_Sales_Price - fit.mle.sig$f)^2)
+ASEexp = mean((exp(test$Median_Sales_Price) - exp(fit.mle.sig$f))^2) # 826.5M
+
+# Fit with burg estimates, train/test set
+fit.b.sig = fore.sigplusnoise.wge(train$Median_Sales_Price, linear = TRUE, method = 'burg', freq = 0, max.p = 6, n.ahead = 30)
+
+# Examine residuals
+plot(fit.b.sig$resid)
+
+# ASE with Burg estimates
+ASE.b = mean((test$Median_Sales_Price - fit.b.sig$f)^2)
+ASE.b.exp = mean((exp(test$Median_Sales_Price) - exp(fit.b.sig$f))^2) # 1.11B
+
+# Create table for comparison
+labels = c("aic", "aicc", "bic", "ase for AR(6)")
+mle.ests = c(spn.mle.aic$value, spn.mle.aicc$value, spn.mle.bic$value, ASE)
+burg.ests = c(spn.b.aic$value, spn.b.aicc$value, spn.b.bic$value, ASE.b)
+comparison = data.frame(labels,mle.ests,burg.ests)
+comparison
+
+# Different Plot
+log.mhp = fed_housing_data$Median_Sales_Price
+plot(log.mhp, type = 'l')
+lines(seq(169,198,1), fit.mle.sig$f, col = "red")
+lines(seq(169,198,1), fit.mle.sig$ll, col = "blue")
+lines(seq(169,198,1), fit.mle.sig$ul, col = "blue")
+lines(seq(169,198,1), fit.b.sig$f, col = "orange")
+lines(seq(169,198,1), fit.b.sig$ll, col = "green")
+lines(seq(169,198,1), fit.b.sig$ul, col = "green")
+
+```
+
+### Signal Plus Noise using 1 Yr Horizon
+
+The 1 Year Horizon backcast (for the past year) is pretty close to the actual values, with an ASE (on the non-lagged values) around 50M. The residuals appear to be white noise when looking at both the plot and the ACF, indicating this model has explained most of the noise of the data.
+
+```{r Signal Plus Noise with 1 yr Horizon}
+# Making sure log.mhp is the correct data
+log.mhp = fed_housing_data$Median_Sales_Price
+
+# Fit with MLE estimates, using all data
+fit.mle.sig_h4 = fore.sigplusnoise.wge(log.mhp, linear = TRUE, method = 'mle', freq = 0, max.p = 6, n.ahead = 4, lastn = TRUE)
+
+# Different Plot
+plot(log.mhp, type = 'l')
+lines(seq(195,198,1), fit.mle.sig_h4$f, col = "red")
+lines(seq(195,198,1), fit.mle.sig_h4$ll, lty = 3, col = "blue")
+lines(seq(195,198,1), fit.mle.sig_h4$ul, lty = 3, col = "blue")
+
+# Zoomed In Plot
+plot(log.mhp[149:198], type = 'l', ylim = c(12.3, 13.2), main = "1 Year Forecast for Signal Plus Noise Model")
+lines(seq(47,50,1), fit.mle.sig_h4$f, col = "red")
+lines(seq(47,50,1), fit.mle.sig_h4$ll, lty = 3, col = "blue")
+lines(seq(47,50,1), fit.mle.sig_h4$ul, lty = 3, col = "blue")
+
+# ASE with MLE estimates
+ASE.h4 = mean((log.mhp[195:198] - fit.mle.sig_h4$f)^2)
+ASEexp.h4 = mean((exp(log.mhp[195:198]) - exp(fit.mle.sig_h4$f))^2)
+ASEexp.h4 # 50.92M
+
+# Examine residuals
+plot(fit.mle.sig_h4$resid)
+plotts.sample.wge(fit.mle.sig_h4$resid)
+acf(fit.mle.sig_h4$resid)
+ljung.wge(fit.mle.sig_h4$resid, p = 6, q = 0, K = 48)
+```
+### Signal Plus Noise using 5 Yr Horizon
+
+The 5 Year Horizon backcast (for the past 5 years) is pretty close to the actual values, with an ASE (on the non-lagged values) around 1.1B. The residuals appear to be white noise when looking at both the plot and the ACF, indicating this model has explained most of the noise of the data.
+
+```{r Signal plus noise with 5 yr horizon}
+# Making sure log.mhp is the correct data
+log.mhp = fed_housing_data$Median_Sales_Price
+
+# Fit with MLE estimates, using all data
+fit.mle.sig_h20 = fore.sigplusnoise.wge(log.mhp, linear = TRUE, method = 'mle', freq = 0, max.p = 6, n.ahead = 20, lastn = TRUE)
+
+# Different Plot
+plot(log.mhp, type = 'l')
+lines(seq(179,198,1), fit.mle.sig_h20$f, col = "red")
+lines(seq(179,198,1), fit.mle.sig_h20$ll, lty = 3, col = "blue")
+lines(seq(179,198,1), fit.mle.sig_h20$ul, lty = 3, col = "blue")
+
+# Zoomed In
+plot(log.mhp[149:198], type = 'l', ylim = c(12.3, 13.2), main = "1 Year Forecast for Signal Plus Noise Model")
+lines(seq(31,50,1), fit.mle.sig_h20$f, col = "red")
+lines(seq(31,50,1), fit.mle.sig_h20$ll, lty = 3, col = "blue")
+lines(seq(31,50,1), fit.mle.sig_h20$ul, lty = 3, col = "blue")
+
+# ASE with MLE estimates
+ASE.h20 = mean((log.mhp[179:198] - fit.mle.sig_h20$f)^2)
+ASEexp.h20 = mean((exp(log.mhp[179:198]) - exp(fit.mle.sig_h20$f))^2)
+ASEexp.h20 # 1.1B
+
+# Examine residuals
+plot(fit.mle.sig_h20$resid)
+plotts.sample.wge(fit.mle.sig_h20$resid)
+acf(fit.mle.sig_h20$resid)
+ljung.wge(fit.mle.sig_h20$resid, p = 6, q = 0, K = 48)
+```
+## Rolling Window RMSE for SPN
+
+To compare this model with other models, we will use code that Aaron has written to create a rolling window that measures RMSE for the model. We will use the MLE estimates for p values of 1-6 to assure ourselves that an AR(6) is the best AR model to accompany the signal. The average RMSE for all 1 year windows (4 quarters) is 0.0326, and the average RMSE for all 5 year windows (20 quarters) is 0.07595. 
+
+```{r Rolling Window RMSE, error = F}
+# Aaron's Rolling Window RMSE Code
+
+# If you wanted to use all the fore.sigplusnoise.wge parameters, it would look something like this:
+series = log.mhp
+horizon = 12
+linear = TRUE
+method = "mle"
+freq=0
+max.p=5
+
+# Rolling Window for 1 Year Horizon with MLE
+horizon = 4
+method = "mle"
+source("functions_Aaron.R")
+mle.p1h4 = roll.win.rmse.linplusnoise.ada(series, horizon, max.p=1) # 0.03564353
+mle.p2h4 = roll.win.rmse.linplusnoise.ada(series, horizon, max.p=2) # 0.03547613
+mle.p3h4 = roll.win.rmse.linplusnoise.ada(series, horizon, max.p=3) # 0.03495764
+mle.p4h4 = roll.win.rmse.linplusnoise.ada(series, horizon, max.p=4) # 0.03326752
+mle.p5h4 = roll.win.rmse.linplusnoise.ada(series, horizon, max.p=5) # 0.03261551
+mle.p6h4 = roll.win.rmse.linplusnoise.ada(series, horizon, max.p=6) # 0.03259507
+mle.p7h4 = roll.win.rmse.linplusnoise.ada(series, horizon, max.p=7) # 0.03259507
+
+# Rolling Window for 5 Year Horizon  with MLE
+horizon = 20
+source("functions_Aaron.R")
+mle.p1h20 = roll.win.rmse.linplusnoise.ada(series, horizon, max.p=1) # 0.08107048
+mle.p2h20 = roll.win.rmse.linplusnoise.ada(series, horizon, max.p=2) # 0.08065467
+mle.p3h20 = roll.win.rmse.linplusnoise.ada(series, horizon, max.p=3) # 0.07973718
+mle.p4h20 = roll.win.rmse.linplusnoise.ada(series, horizon, max.p=4) # 0.07797091
+mle.p5h20 = roll.win.rmse.linplusnoise.ada(series, horizon, max.p=5) # 0.07669397
+mle.p6h20 = roll.win.rmse.linplusnoise.ada(series, horizon, max.p=6) # 0.0759512
+mle.p7h20 = roll.win.rmse.linplusnoise.ada(series, horizon, max.p=7) # 0.0759512
+```
+
+## Evaluating Models
+
+We will evaluate the model by comparing the ACFs and the Spectral Densities for the same model on generated signal plus noise data. The loop given in class for Unit 11 does not work with signal plus noise generated realizations because the output includes the AR portion of the model regardless of whether plot = TRUE or FALSE. Thus, we will generate 10 different realizations and then take the ACFs and Spectral Densities of all 10 objects. The 
+
+```{r Ten generated realizations, include = FALSE }
+
+# 10 generated realizations 
+# Rename variable in working RMD that was not carried over to final RMD:
+fit.mle.sig_notTT = fit.mle.sig
+
+spn.mle.ar6.1 = gen.sigplusnoise.wge(n=198, b0 = fit.mle.sig_notTT$b0hat, 
+                                   b1 = fit.mle.sig_notTT$b1hat,
+                                   phi=fit.mle.sig_notTT$phi.z, 
+                                   vara = fit.mle.sig_notTT$wnv, plot = F)
+spn.mle.ar6.2 = gen.sigplusnoise.wge(n=198, b0 = fit.mle.sig_notTT$b0hat, 
+                                   b1 = fit.mle.sig_notTT$b1hat,
+                                   phi=fit.mle.sig_notTT$phi.z, 
+                                   vara = fit.mle.sig_notTT$wnv, plot = F)
+spn.mle.ar6.3 = gen.sigplusnoise.wge(n=198, b0 = fit.mle.sig_notTT$b0hat, 
+                                   b1 = fit.mle.sig_notTT$b1hat,
+                                   phi=fit.mle.sig_notTT$phi.z, 
+                                   vara = fit.mle.sig_notTT$wnv, plot = F)
+spn.mle.ar6.4 = gen.sigplusnoise.wge(n=198, b0 = fit.mle.sig_notTT$b0hat, 
+                                   b1 = fit.mle.sig_notTT$b1hat,
+                                   phi=fit.mle.sig_notTT$phi.z, 
+                                   vara = fit.mle.sig_notTT$wnv, plot = F)
+spn.mle.ar6.5 = gen.sigplusnoise.wge(n=198, b0 = fit.mle.sig_notTT$b0hat, 
+                                   b1 = fit.mle.sig_notTT$b1hat,
+                                   phi=fit.mle.sig_notTT$phi.z, 
+                                   vara = fit.mle.sig_notTT$wnv, plot = F)
+spn.mle.ar6.6 = gen.sigplusnoise.wge(n=198, b0 = fit.mle.sig_notTT$b0hat, 
+                                   b1 = fit.mle.sig_notTT$b1hat,
+                                   phi=fit.mle.sig_notTT$phi.z, 
+                                   vara = fit.mle.sig_notTT$wnv, plot = F)
+spn.mle.ar6.7 = gen.sigplusnoise.wge(n=198, b0 = fit.mle.sig_notTT$b0hat, 
+                                   b1 = fit.mle.sig_notTT$b1hat,
+                                   phi=fit.mle.sig_notTT$phi.z, 
+                                   vara = fit.mle.sig_notTT$wnv, plot = F)
+spn.mle.ar6.8 = gen.sigplusnoise.wge(n=198, b0 = fit.mle.sig_notTT$b0hat, 
+                                   b1 = fit.mle.sig_notTT$b1hat,
+                                   phi=fit.mle.sig_notTT$phi.z, 
+                                   vara = fit.mle.sig_notTT$wnv, plot = F)
+spn.mle.ar6.9 = gen.sigplusnoise.wge(n=198, b0 = fit.mle.sig_notTT$b0hat, 
+                                   b1 = fit.mle.sig_notTT$b1hat,
+                                   phi=fit.mle.sig_notTT$phi.z, 
+                                   vara = fit.mle.sig_notTT$wnv, plot = F)
+spn.mle.ar6.10 = gen.sigplusnoise.wge(n=198, b0 = fit.mle.sig_notTT$b0hat, 
+                                   b1 = fit.mle.sig_notTT$b1hat,
+                                   phi=fit.mle.sig_notTT$phi.z, 
+                                   vara = fit.mle.sig_notTT$wnv, plot = F)
+
+ten.generated = list(spn.mle.ar6.1, spn.mle.ar6.2, spn.mle.ar6.3, spn.mle.ar6.4, spn.mle.ar6.5, spn.mle.ar6.6, spn.mle.ar6.7, spn.mle.ar6.8, spn.mle.ar6.9, spn.mle.ar6.10)
+
+# ten.generated[[1]]
+# parzen.wge(ten.generated[[1]])
+
+```
+
+```{r Comparing ACFs and Spectral Densities}
+# Compare Spectral Densities
+sims = 10
+SpecDen = parzen.wge(log.mhp, plot = FALSE)
+plot(SpecDen$freq,SpecDen$pzgram, type = "l", lwd = 3)
+
+for( i in 1: sims)
+{
+   SpecDen2 = parzen.wge(ten.generated[[i]], plot = FALSE)
+   lines(SpecDen2$freq,SpecDen2$pzgram, lwd = 2, col = "red")
+}
+
+#Compare ACFs
+sims = 10
+ACF = acf(log.mhp, plot = "FALSE")
+plot(ACF$lag ,ACF$acf , type = "l", lwd = 4)
+
+for( i in 1: sims)
+{
+   ACF2 = acf(ten.generated[[i]], plot = "FALSE")
+   lines(ACF2$lag ,ACF2$acf, lwd = 1, col = "red")
+}
+```
+
+## Model Choice
+
+While the burg estimates had a lower AIC than the MLE estimates, the MLE method of forecasting had better ASE and better rolling window RMSE for all three forecasts (1 yr, 3 yr, and 5 yr)
+
+Our final Signal Plus Noise Model is Xt = 10.871 + .011t + zt, where (1 - .716B - .367B2 - 0.137B3 + 0.062B4 + .076B5 + .118B5)Zt with sigma2 = 0.0006929526
+
+Wording: 
+
+In 1 year, we are 95% confident that the median home sale price will be between $387,759 (e^12.86814) and $468,321 (e^13.05691). Our best estimate is $426,142 (e^12.96253).
+
+In 5 years, we are 95% confident that the median home sale price will be between $419,048 (e^12.94574) and $669,482 (e^13.41426). Our best estimate is $529,665 (e^13.18).
+
+```{r Model Choice}
+
+# Fit with MLE estimates, using all data, forecasting ahead 1 year
+fit.mle.sig_h4_ahead = fore.sigplusnoise.wge(log.mhp, linear = TRUE, method = 'mle', freq = 0, max.p = 6, n.ahead = 4, lastn = FALSE)
+
+# Fit with MLE estimates, using all data, forecasting ahead 5 years
+fit.mle.sig_h20_ahead = fore.sigplusnoise.wge(log.mhp, linear = TRUE, method = 'mle', freq = 0, max.p = 6, n.ahead = 20, lastn = FALSE)
+
+# Checking if models all have same intercept, slope, and phis
+fit.mle.sig_notTT$b0hat == fit.mle.sig_h4_ahead$b0hat
+fit.mle.sig_notTT$b1hat == fit.mle.sig_h4_ahead$b1hat
+fit.mle.sig_notTT$phi.z == fit.mle.sig_h4_ahead$phi.z
+
+# Model Coefficients
+fit.mle.sig_notTT$phi.z
+fit.mle.sig_notTT$b0hat
+fit.mle.sig_notTT$b1hat
+fit.mle.sig_notTT$wnv
+
+# Confidence Intervals
+
+# 1 Year
+fit.mle.sig_h4_ahead$ll[4]
+fit.mle.sig_h4_ahead$ul[4]
+fit.mle.sig_h4_ahead$f[4]
+
+# 5 Years
+fit.mle.sig_h20_ahead$ll[20]
+fit.mle.sig_h20_ahead$ul[20]
+fit.mle.sig_h20_ahead$f[20]
 ```
 
 # Multi-variate Models
