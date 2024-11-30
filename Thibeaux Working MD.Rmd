@@ -18,7 +18,9 @@ library(vars)
 library(lubridate)
 library(nnfor)
 ```
+
 # Load Data
+
 ```{r Load and wrangle data}
 
 # Variable of Interest - Quarterly from 1/1/63
@@ -103,6 +105,7 @@ summary(fed_housing_data)
 
 # Signal Plus Noise Model
 ### Test for linear Trend
+
 ```{r Test for linear trend}
 # Testing for Linear Trend
 t = 1:168
@@ -132,6 +135,7 @@ abline(h=0)
 Null hypothesis rejected in all tests (Note: Barely rejects hypothesis with WBG test)
 
 ### Models
+
 ```{r Signal Plus Noise models}
 # Fit signal plus noise models
 
@@ -176,7 +180,9 @@ fit.mle.sig$b1hat
 # Different Plot
 log.mhp = fed_housing_data$Median_Sales_Price
 plot(log.mhp, type = 'l')
-lines(seq(169,198,1), fit.mle.sig$f, col = "blue")
+lines(seq(169,198,1), fit.mle.sig$f, col = "red")
+lines(seq(169,198,1), fit.mle.sig$ll, col = "blue")
+lines(seq(169,198,1), fit.mle.sig$ul, col = "blue")
 
 # Examine residuals
 plot(fit.mle.sig$resid)
@@ -206,7 +212,9 @@ ASE.b.exp # 1.11B
 # MLE estimates are better than Burg estimates, as expected
 ASEexp < ASE.b.exp
 ```
+
 ### Signal Plus Noise using all data
+
 ```{r Signal Plus Noise without holding data out}
 # Making sure log.mhp is the correct data
 log.mhp = fed_housing_data$Median_Sales_Price
@@ -253,6 +261,7 @@ ASEexp.full < ASE.b.exp.full
 ```
 
 ### Signal Plus Noise using 1 Yr Horizon
+
 ```{r Signal Plus Noise with 1 yr Horizon}
 # Making sure log.mhp is the correct data
 log.mhp = fed_housing_data$Median_Sales_Price
@@ -264,7 +273,9 @@ fit.mle.sig_h4$b1hat
 
 # Different Plot
 plot(log.mhp, type = 'l')
-lines(seq(195,198,1), fit.mle.sig_h4$f, col = "blue")
+lines(seq(195,198,1), fit.mle.sig_h4$f, col = "red")
+lines(seq(195,198,1), fit.mle.sig_h4$ll, lty = 3, col = "blue")
+lines(seq(195,198,1), fit.mle.sig_h4$ul, lty = 3, col = "blue")
 
 # Examine residuals
 plot(fit.mle.sig_h4$resid)
@@ -295,7 +306,9 @@ ASE.b.exp.h4 # 54.75M
 ASEexp.h4 < ASE.b.exp.h4
 
 ```
+
 ### Signal Plus Noise using 3 Yr Horizon
+
 ```{r Signal Plus Noise with 3 yr horizon}
 # Making sure log.mhp is the correct data
 log.mhp = fed_housing_data$Median_Sales_Price
@@ -337,7 +350,9 @@ ASE.b.exp.h12 # 621.99M
 # Burg estimates worse ASE though
 ASEexp.h12 < ASE.b.exp.h12
 ```
+
 ### Signal Plus Noise using 5 Yr Horizon
+
 ```{r Signal plus noise with 5 yr horizon}
 # Making sure log.mhp is the correct data
 log.mhp = fed_housing_data$Median_Sales_Price
@@ -349,7 +364,9 @@ fit.mle.sig_h20$b1hat
 
 # Different Plot
 plot(log.mhp, type = 'l')
-lines(seq(179,198,1), fit.mle.sig_h20$f, col = "blue")
+lines(seq(179,198,1), fit.mle.sig_h20$f, col = "red")
+lines(seq(179,198,1), fit.mle.sig_h20$ll, lty = 3, col = "blue")
+lines(seq(179,198,1), fit.mle.sig_h20$ul, lty = 3, col = "blue")
 
 # Examine residuals
 plot(fit.mle.sig_h20$resid)
@@ -379,6 +396,8 @@ ASE.b.exp.h20 # 54.75M
 # Burg estimates worse ASE though
 ASEexp.h20 < ASE.b.exp.h20
 ```
+
+## Rolling Window RMSE for SPN
 
 ```{r Rolling Window RMSE, error = F}
 # Aaron's Rolling Window RMSE Code
@@ -482,8 +501,10 @@ mle.p6h4 < burg.p6h4
 mle.p6h12 < burg.p6h12
 mle.p6h20 < burg.p6h20
 ```
+
 ## Evaluating Models
-```{r}
+
+```{r Evaluating SPN Models}
 # Look at White Noise
 plotts.sample.wge(fit.mle.sig_notTT$resid, lag.max = 48, arlimits = TRUE)
 ljung.wge(fit.mle.sig_notTT$resid, p = 6, q = 0, K = 48)
@@ -569,7 +590,7 @@ In 1 year, we are 95% confident that the median home sale price will be between 
 
 In 5 years, we are 95% confident that the median home sale price will be between $419,048 (e^12.94574) and $669,482 (e^13.41426). Our best estimate is $529,665 (e^13.18).
 
-```{r}
+```{r Model Choice}
 
 # Fit with MLE estimates, using all data, forecasting ahead 1 year
 fit.mle.sig_h4_ahead = fore.sigplusnoise.wge(log.mhp, linear = TRUE, method = 'mle', freq = 0, max.p = 6, n.ahead = 4, lastn = FALSE)
@@ -611,14 +632,42 @@ msp.194 = ts(log.mhp[1:194])
 msp.186 = ts(log.mhp[1:186])
 msp.178 = ts(log.mhp[1:178])
 
-# 1 Year Horizon
-mspFit.4 = mlp(msp.194)
+# 1 Year Horizons
+mspFit.4 = mlp(msp.194, comb = 'median')
+mspFit.d0.4 = mlp(msp.194, comb = 'median', difforder = 0)
+mspFit.d1.4 = mlp(msp.194, comb = 'median', difforder = 1)
+mspFit.d2.4 = mlp(msp.194, comb = 'median', difforder = 2)
+
 f.4 = forecast(mspFit.4, h = 4)
+f.d0.4 = forecast(mspFit.d0.4, h = 4)
+f.d1.4 = forecast(mspFit.d1.4, h = 4)
+f.d2.4 = forecast(mspFit.d2.4, h = 4)
+
+# Defaults
+ASE.mlp.exp.h4 = mean((exp(log.mhp[195:198]) - exp(f.4$mean))^2)
+ASE.mlp.exp.h4 # 60.95M
+rwfit.mlp4 = roll.win.rmse.nn.wge(log.mhp, horizon = 4, fit_model = mspFit.4) # 0.029
+
+# Difforder = 0
+ASE.mlp.exp.d0.h4 = mean((exp(log.mhp[195:198]) - exp(f.d0.4$mean))^2)
+ASE.mlp.exp.d0.h4 # 99.75M
+rwfit.mlp4.d0 = roll.win.rmse.nn.wge(log.mhp, horizon = 4, fit_model = mspFit.d0.4) # 0.033
+
+# Difforder = 1
+ASE.mlp.exp.d1.h4 = mean((exp(log.mhp[195:198]) - exp(f.d1.4$mean))^2)
+ASE.mlp.exp.d1.h4 # 178.5M
+rwfit.mlp4.d1 = roll.win.rmse.nn.wge(log.mhp, horizon = 4, fit_model = mspFit.d1.4) # 0.029
+
+# Difforder = 2
+ASE.mlp.exp.d2.h4 = mean((exp(log.mhp[195:198]) - exp(f.d2.4$mean))^2)
+ASE.mlp.exp.d2.h4 # 205.4M
+rwfit.mlp4.d2 = roll.win.rmse.nn.wge(log.mhp, horizon = 4, fit_model = mspFit.d2.4) # 0.031
+
 plot(log.mhp[195:198], type = 'l', ylim = c(12.9, 13))
 lines(seq(1,4), f.4$mean, col = "blue")
-ASE.mlp.exp.h4 = mean((exp(log.mhp[195:198]) - exp(f.4$mean))^2)
-ASE.mlp.exp.h4 # 91.51M
-rwfit.mlp4 = roll.win.rmse.nn.wge(log.mhp, horizon = 4, fit_model = mspFit.4)
+lines(seq(1,4), f.d0.4$mean, col = "red")
+lines(seq(1,4), f.d1.4$mean, col = "orange")
+lines(seq(1,4), f.d2.4$mean, col = "green")
 
 # 3 Year Horizon
 mspFit.12 = mlp(msp.186)
@@ -626,23 +675,226 @@ f.12 = forecast(mspFit.12, h = 12)
 plot(log.mhp[187:198], type = 'l', ylim = c(12.75, 13))
 lines(seq(1,12), f.12$mean, col = "blue")
 ASE.mlp.exp.h12 = mean((exp(log.mhp[187:198]) - exp(f.12$mean))^2)
-ASE.mlp.exp.h12 # 949.55N
+ASE.mlp.exp.h12 # 949.55M
 rwfit.mlp12 = roll.win.rmse.nn.wge(log.mhp, horizon = 12, fit_model = mspFit.12)
 
 # 5 Year Horizon
-mspFit.20 = mlp(msp.178)
+mspFit.20 = mlp(msp.178, comb = 'median')
+mspFit.d0.20 = mlp(msp.178, comb = 'median', difforder = 0)
+mspFit.d1.20 = mlp(msp.178, comb = 'median', difforder = 1)
+mspFit.d2.20 = mlp(msp.178, comb = 'median', difforder = 2)
+
 f.20 = forecast(mspFit.20, h = 20)
+f.d0.20 = forecast(mspFit.d0.20, h = 20)
+f.d1.20 = forecast(mspFit.d1.20, h = 20)
+f.d2.20 = forecast(mspFit.d2.20, h = 20)
+
+# Defaults
+ASE.mlp.exp.h20 = mean((exp(log.mhp[179:198]) - exp(f.20$mean))^2)
+ASE.mlp.exp.h20 # 1.72B
+rwfit.mlp20 = roll.win.rmse.nn.wge(log.mhp, horizon = 20, fit_model = mspFit.20) # 0.072
+
+# Difforder = 0
+ASE.mlp.exp.d0.h20 = mean((exp(log.mhp[179:198]) - exp(f.d0.20$mean))^2)
+ASE.mlp.exp.d0.h20 # 7.24B
+rwfit.mlp20.d0 = roll.win.rmse.nn.wge(log.mhp, horizon = 20, fit_model = mspFit.d0.20) # 0.076
+
+# Difforder = 1
+ASE.mlp.exp.d1.h20 = mean((exp(log.mhp[179:198]) - exp(f.d1.20$mean))^2)
+ASE.mlp.exp.d1.h20 # 2.02B
+rwfit.mlp20.d1 = roll.win.rmse.nn.wge(log.mhp, horizon = 20, fit_model = mspFit.d1.20) # 0.073
+
+# Difforder = 2
+ASE.mlp.exp.d2.h20 = mean((exp(log.mhp[179:198]) - exp(f.d2.20$mean))^2)
+ASE.mlp.exp.d2.h20 # 2.61B
+rwfit.mlp20.d2 = roll.win.rmse.nn.wge(log.mhp, horizon = 20, fit_model = mspFit.d2.20) # 0.077
+
 plot(log.mhp[179:198], type = 'l', ylim = c(12.5, 13))
 lines(seq(1,20), f.20$mean, col = "blue")
-ASE.mlp.exp.h20 = mean((exp(log.mhp[195:198]) - exp(f.20$mean))^2)
-ASE.mlp.exp.h20 # 5.43B
-rwfit.mlp20 = roll.win.rmse.nn.wge(log.mhp, horizon = 20, fit_model = mspFit.20)
+lines(seq(1,20), f.d0.20$mean, col = "red")
+lines(seq(1,20), f.d1.20$mean, col = "orange")
+lines(seq(1,20), f.d2.20$mean, col = "green")
 
-plot(log.mhp, type = 'l')
-points(seq(195,198), f.4$mean, type = 'l', col = 'red', pch = 3)
-points(seq(187,198), f.12$mean, type = 'l', col = 'darkorange', pch = 3)
-points(seq(179,198), f.20$mean, type = 'l', col = 'green', pch = 3)
+# Forecasts
+plot(log.mhp, type = 'l', lwd = 1, main = 'Univariate Forecasts, 1 and 5 Years')
+points(seq(195,198), f.4$mean, type = 'l', col = 'red', lwd = 2)
+#points(seq(187,198), f.12$mean, type = 'l', col = 'darkorange', pch = 3)
+points(seq(179,198), f.20$mean, type = 'l', col = 'red', lwd = 2)
+
+# Zoomed In
+plot(log.mhp[149:198], type = 'l', lwd = 1, main = 'Univariate Forecasts, 1 and 5 Years')
+points(seq(47,50), f.4$mean, type = 'l', col = 'red', lwd = 2)
+#points(seq(187,198), f.12$mean, type = 'l', col = 'darkorange', pch = 3)
+points(seq(31,50), f.20$mean, type = 'l', col = 'red', lwd = 2)
 ```
+## Confidence Intervals
+```{r MLP Confidence Intervals}
+################################################################################
+
+# Trying what Dr Sadler did, but for an mlp model
+
+# xt = gen.arma.wge(100,phi = .9)
+file_path = "https://raw.githubusercontent.com/aabromowitz/TimeSeriersProject/refs/heads/main/MSPUS.csv"
+mhp <- read.csv(file_path, header = TRUE)
+mhp_1975 = mhp[49:246,]
+xt = log(mhp_1975$MSPUS)
+
+# Horizon = 20  
+h.long = 20
+l = length(xt)
+xtTrain = xt[1:(l-h.long)]
+
+# est = est.arma.wge(xtTrain,p = 1)
+library(nnfor)
+set.seed(30)
+fit.mlp = mlp(ts(xt), comb = 'median')
+lf = length(fit.mlp$fitted)
+res = xt[(l-lf+1):l]-fit.mlp$fitted
+
+# Are residuals white noise?
+plotts.sample.wge(res)
+acf(res,lag.max=100)
+ljung.wge(res,K=24) # p = 0.3804433, white noise
+ljung.wge(res,K=48) # p = 0.6786805, white
+hist(res) # look normally distributed
+
+# BSSim = function(ts,res,phi,horizon) {
+num_back = l - lf
+BSSim = function(ts,res,fit,num_back,horizon) {
+  origin = length(ts)
+  ForHolder = numeric(horizon)
+  for(i in (origin+1):(origin+horizon)){
+    # ts[i] = ts[i-1]*phi + sample(res,1)
+    # print(i)
+    needed_to_predict = ts[(i-num_back):(i-1)]
+    fore=forecast(fit,y=needed_to_predict,h=1)
+    ts[i]=fore$mean+sample(res,1)
+    ForHolder[(i-origin)]=ts[i]
+  }
+  return(ForHolder)
+}
+
+# BSSamples = 100000
+BSSamples = 1000 # I'm worried 100k will take a really long time, so make it less
+
+# holder = matrix(nrow = BSSamples,ncol = 50)
+holder = matrix(nrow = BSSamples,ncol = h.long)
+
+for(i in 1:BSSamples)
+{
+  # xtNewFor = BSSim(xtTrain,est$res,est$phi,50)
+  if ((i %% 100) == 0){
+    print(i)
+  }
+  xtNewFor = BSSim(xtTrain,res,fit.mlp,num_back,h.long)
+  holder[i,] = xtNewFor
+}
+
+# Calculate percentiles for each column
+percentiles_per_column <- apply(holder, 2, function(column) {
+  quantile(column, probs = c(0.025, 0.975))
+})
+
+# Transpose the result for better readability
+percentiles_per_column <- t(percentiles_per_column)
+
+# Print the result
+print(percentiles_per_column)
+
+xtNewForBS = colMeans(holder)
+
+# plotts.wge(c(xtTrain-est$res,xtNewForBS))
+#plotts.wge(c(fit.mlp$fitted,xtNewForBS),ylim=c(min(fit.mlp$fitted)-.1,max(fit.mlp$fitted)+.1), )
+#lines(seq(lf+1,lf+h.long,1),percentiles_per_column[,1],col = "blue")
+#lines(seq(lf+1,lf+h.long,1),percentiles_per_column[,2],col = "blue")
+#lines(seq(lf+1,lf+h.long,1),xt[(l-h.long+1):l],col = "red")
+
+# plotts.wge(c(xtTrain-est$res,xtNewForBS))
+plot(log.mhp[6:198], type = 'l', main = 'Univariate MLP 5 Year Forecast with Confidence Intervals')
+lines(seq(174,193,1),percentiles_per_column[,1], lty = 3, col = "blue")
+lines(seq(174,193,1),percentiles_per_column[,2], lty = 3, col = "blue")
+lines(seq(174,193,1),xtNewForBS,ylim=c(min(fit.mlp$fitted)-.1,max(fit.mlp$fitted)+.1),col = "red")
+
+# Horizon = 4
+h.long = 4
+l = length(xt)
+xtTrain = xt[1:(l-h.long)]
+
+# est = est.arma.wge(xtTrain,p = 1)
+library(nnfor)
+set.seed(30)
+fit.mlp = mlp(ts(xt), comb = 'median')
+lf = length(fit.mlp$fitted)
+res = xt[(l-lf+1):l]-fit.mlp$fitted
+
+# Are residuals white noise?
+plotts.sample.wge(res)
+acf(res,lag.max=100)
+ljung.wge(res,K=24) # p = 0.3804433, white noise
+ljung.wge(res,K=48) # p = 0.6786805, white
+hist(res) # look normally distributed
+
+# BSSim = function(ts,res,phi,horizon) {
+num_back = l - lf
+BSSim = function(ts,res,fit,num_back,horizon) {
+  origin = length(ts)
+  ForHolder = numeric(horizon)
+  for(i in (origin+1):(origin+horizon)){
+    # ts[i] = ts[i-1]*phi + sample(res,1)
+    # print(i)
+    needed_to_predict = ts[(i-num_back):(i-1)]
+    fore=forecast(fit,y=needed_to_predict,h=1)
+    ts[i]=fore$mean+sample(res,1)
+    ForHolder[(i-origin)]=ts[i]
+  }
+  return(ForHolder)
+}
+
+# BSSamples = 100000
+BSSamples = 1000 # I'm worried 100k will take a really long time, so make it less
+
+# holder = matrix(nrow = BSSamples,ncol = 50)
+holder = matrix(nrow = BSSamples,ncol = h.long)
+
+for(i in 1:BSSamples)
+{
+  # xtNewFor = BSSim(xtTrain,est$res,est$phi,50)
+  if ((i %% 100) == 0){
+    print(i)
+  }
+  xtNewFor = BSSim(xtTrain,res,fit.mlp,num_back,h.long)
+  holder[i,] = xtNewFor
+}
+
+# Calculate percentiles for each column
+percentiles_per_column <- apply(holder, 2, function(column) {
+  quantile(column, probs = c(0.025, 0.975))
+})
+
+# Transpose the result for better readability
+percentiles_per_column <- t(percentiles_per_column)
+
+# Print the result
+print(percentiles_per_column)
+
+xtNewForBS = colMeans(holder)
+
+result = fit.mlp$fitted
+
+# plotts.wge(c(xtTrain-est$res,xtNewForBS))
+#plotts.wge(c(fit.mlp$fitted,xtNewForBS),ylim=c(min(fit.mlp$fitted)-.1,max(fit.mlp$fitted)+.1), )
+#lines(seq(lf+1,lf+h.long,1),percentiles_per_column[,1],col = "blue")
+#lines(seq(lf+1,lf+h.long,1),percentiles_per_column[,2],col = "blue")
+#lines(seq(lf+1,lf+h.long,1),xt[(l-h.long+1):l],col = "red")
+
+# plotts.wge(c(xtTrain-est$res,xtNewForBS))
+plot(log.mhp[6:198], type = 'l', main = 'Univariate MLP 1 Year Forecast with Confidence Intervals')
+lines(seq(190,193,1),percentiles_per_column[,1], lty = 3, col = "blue")
+lines(seq(190,193,1),percentiles_per_column[,2], lty = 3, col = "blue")
+lines(seq(190,193,1),xtNewForBS,ylim=c(min(fit.mlp$fitted)-.1,max(fit.mlp$fitted)+.1),col = "red")
+```
+
+# Multivariate MLP
 
 ```{r MLP Multivariate Baseline}
 # Multivariate
@@ -831,11 +1083,13 @@ forecasted.mlp.X.dx.12
 forecasted.mlp.X.dx.20 = forecast(fit.mlp.dx.20, h = 20, xreg = ts.forecasted.X.20)
 forecasted.mlp.X.dx.20
 ```
-Assessing the Models
+
+## Assessing the Models
 
 ```{r Assessing mlp models}
 # 1 Year Models
-plot(log.mhp[195:198], type = 'l', ylim = c(12.75, 13.2))
+plot(log.mhp[195:198], type = 'l', ylim = c(12.75, 13.2), lwd = 3, main = "Actual Values vs. Univariate and Multivariate MLP 1 Year forecasts")
+lines(seq(1,4), f.4$mean, col = "purple")
 lines(seq(1,4), forecasted.mlp.X.4$mean, col = "blue")
 lines(seq(1,4), forecasted.mlp.X.d1.4$mean, col = "red")
 lines(seq(1,4), forecasted.mlp.X.d2.4$mean, col = "orange")
@@ -867,7 +1121,8 @@ RMSE.x.dx.4 # 0.037
 
 
 # 3 Yr Models
-plot(log.mhp[187:198], type = 'l', ylim = c(12.75, 13.5))
+plot(log.mhp[187:198], type = 'l', ylim = c(12.75, 13.5), main = "Actual Values vs. Univariate and Multivariate MLP 3 Year forecasts")
+lines(seq(1,12), f.12$mean, col = "purple")
 lines(seq(1,12), forecasted.mlp.X.12$mean, col = "blue")
 lines(seq(1,12), forecasted.mlp.X.d1.12$mean, col = "red")
 lines(seq(1,12), forecasted.mlp.X.d2.12$mean, col = "orange")
@@ -898,7 +1153,8 @@ RMSE.x.dx.12 = sqrt(mean((mhp.test.12 - forecasted.mlp.X.dx.12$mean)^2))
 RMSE.x.dx.12 # 0.2305
 
 # 5 Yr Models
-plot(log.mhp[179:198], type = 'l', ylim = c(12.3, 13.1))
+plot(log.mhp[179:198], type = 'l', ylim = c(12.3, 13.1), lwd = 3, main = "Actual Values vs. Univariate and Multivariate MLP 5 Year forecasts")
+lines(seq(1,20), f.20$mean, col = "purple")
 lines(seq(1,20), forecasted.mlp.X.20$mean, col = "blue")
 lines(seq(1,20), forecasted.mlp.X.d1.20$mean, col = "red")
 lines(seq(1,20), forecasted.mlp.X.d2.20$mean, col = "orange")
@@ -928,7 +1184,7 @@ ASE.mlp.exp.x.dx.h20 # 12.8B
 RMSE.x.dx.20 = sqrt(mean((mhp.test.20 - forecasted.mlp.X.dx.20$mean)^2))
 RMSE.x.dx.20 # 0.327
 
-# Best Models
+# Best Multivariate Models
 plot(log.mhp, type = 'l')
 points(seq(195,198), forecasted.mlp.X.dx.4$mean, type = 'l', col = 'green', pch = 3)
 points(seq(187,198), forecasted.mlp.X.d2.12$mean, type = 'l', col = 'darkorange', pch = 3)
@@ -1002,3 +1258,4 @@ hist(resid.mlp.20)
 plotts.sample.wge(resid.mlp.20, arlimits = TRUE)
 
 ```
+
