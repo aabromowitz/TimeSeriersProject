@@ -82,6 +82,7 @@ f = fore.arima.wge(x,phi=est$phi,theta=est$theta,n.ahead=h.long,lastn=TRUE)
 snh.pred.long = f$f
 fed_housing_data_short$Supply_New_Houses[(l-h.short+1):l] = snh.pred.short
 fed_housing_data_long$Supply_New_Houses[(l-h.long+1):l] = snh.pred.long
+dev.off()
 
 ################################################################################
 
