@@ -381,6 +381,8 @@ for( i in 1: sims)
 
 The ACFs don't match up exactly, but have the same slowly dampening behavior.  The Parzen Windows are very close to the original.
 
+# Signal Plus Noise
+
 # Exogenous Variable Forecasts
 
 In order to use the Exogenous variables in either the MLR or Multi-Variate MLP, it is more realistic to make predictions for them first.  
@@ -758,7 +760,7 @@ The VAR model has a very small short term ASE of 46.4 M.  This is even smaller t
 
 # Neural Networks
 
-We investigated 3 Neural Nets for predictions: Multilayer Perceptron (MLP), Long Short-Term Memory(LSTM), and Temporal Fusion Transformer (TFT).
+We investigated 3 Neural Nets (NNs) for predictions: Multilayer Perceptron (MLP), Long Short-Term Memory(LSTM), and Temporal Fusion Transformer (TFT).
 
 ## MLP
 
