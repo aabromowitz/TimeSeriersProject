@@ -105,7 +105,7 @@ summary(fed_housing_data)
 ### Test for linear Trend
 ```{r Test for linear trend}
 # Testing for Linear Trend
-t = 1:198
+t = 1:168
 reg = slr.wge(train$Median_Sales_Price)
 
 # Cochran Orcutt Test for Linear Trend
