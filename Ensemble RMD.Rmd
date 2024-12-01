@@ -1,0 +1,146 @@
+---
+title: "Ensemble"
+author: "Thibeaux"
+date: "2024-12-01"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Ensemble
+
+## Short Term Ensemble: VAR + MLP
+```{r Ensemble Model Short Term}
+log.mhp = fed_housing_data$Median_Sales_Price
+
+# Refit VAR Model
+x = fed_housing_data
+x$Year_Quarter = c()
+VARselect(x,lag.max=16,type="both",season=NULL,exogen=NULL) # lag = 4
+fit = VAR(x,p=4,type='both') 
+summary(fit) # trend and const were significant, but only lag up to 2 for variable of interest, huc not very predictive
+preds=predict(fit,n.ahead=h.short)
+
+# VAR Metrics
+ase = mean((fed_housing_data_NL$Median_Sales_Price[(l-h.short+1):l]-exp(preds$fcst$Median_Sales_Price[,1]))^2)/1e6
+ase # 46.3595
+
+# VAR Plot
+plot(seq(1,l,1),x$Median_Sales_Price,type="b")
+points(seq(l-h.short+1,l,1),preds$fcst$Median_Sales_Price[1:h.short,1],type="b",pch=15,col="blue")
+fanchart(preds)
+
+# Refit Univariate MLP Model
+log.mhp = fed_housing_data$Median_Sales_Price
+msp.194 = ts(log.mhp[1:194])
+
+# 1 Year Horizon
+mspFit.4 = mlp(msp.194, comb = 'median')
+f.4 = forecast(mspFit.4, h = 4)
+
+# MLP Metrics
+ASE.mlp.exp.h4 = mean((exp(log.mhp[195:198]) - exp(f.4$mean))^2) # 60.95M
+rwfit.mlp4 = roll.win.rmse.nn.wge(log.mhp, horizon = 4, fit_model = mspFit.4) # 0.029
+
+# Forecasts
+plot(log.mhp, type = 'l', lwd = 1, main = 'Univariate Forecasts, 1 and 5 Years')
+points(seq(195,198), f.4$mean, type = 'l', col = 'red')
+
+# Zoomed In, 1 yr
+plot(seq(150,198,1),log.mhp[150:198], type = 'l', lwd = 1, main = 'Univariate MLP Forecast, 1 Year')
+points(seq(195,198,1), f.4$mean, type = 'l', col = 'red')
+
+# Ensemble Model
+ensemble.4 = (preds$fcst$Median_Sales_Price[,1] + f.4$mean)/2
+ensemble.4
+
+# Forecast
+plot(log.mhp, type = 'l', ylim=c(10.5, 13.1),
+     main = 'Ensemble Model, VAR & MLP Short Term Forecast', xlab = 'Time', 
+     ylab = 'log Median Housing Sales Price')
+lines(seq(195,198,1),ensemble.4,col = "red")
+
+# Zoomed In
+plot(seq(150,198,1),log.mhp[150:198], type = 'l', ylim=c(12.4, 13.1),
+     main = 'Ensemble Model, VAR & MLP Short Term Forecast', 
+     xlab = 'Time', ylab = 'log Median Housing Sales Price')
+lines(seq(195,198,1),ensemble.4,col = "red")
+
+# Metrics
+ASE.ensemble.4 = mean((exp(log.mhp[195:198]) - exp(ensemble.4))^2) # 63.36M
+ASE.ensemble.4
+RMSE.ensemble.4 = sqrt(mean(log.mhp[195:198] - ensemble.4)^2) # 0.0089
+RMSE.ensemble.4
+```
+## Long Term Ensemble: SPN + MLP
+
+```{r Ensemble Model Long Term}
+log.mhp = fed_housing_data$Median_Sales_Price
+
+# SPN Fit with MLE estimates, using all data
+fit.mle.sig_h20 = fore.sigplusnoise.wge(log.mhp, linear = TRUE, method = 'mle', freq = 0, 
+                                        max.p = 6, n.ahead = 20, lastn = TRUE)
+
+# SPN Plot
+plot(log.mhp, type = 'l')
+lines(seq(179,198,1), fit.mle.sig_h20$f, col = "red")
+lines(seq(179,198,1), fit.mle.sig_h20$ll, lty = 3, col = "blue")
+lines(seq(179,198,1), fit.mle.sig_h20$ul, lty = 3, col = "blue")
+
+# Zoomed In
+plot(seq(150,198,1),log.mhp[150:198], type = 'l', ylim = c(12.3, 13.2), main = "Linear Signal with AR(6) Noise Long Term Forecast", 
+     xlab = "Time", ylab = "log Median Housing Sales Price")
+lines(seq(179,198,1), fit.mle.sig_h20$f, col = "red")
+lines(seq(179,198,1), fit.mle.sig_h20$ll, lty = 3, col = "blue")
+lines(seq(179,198,1), fit.mle.sig_h20$ul, lty = 3, col = "blue")
+
+# ASE with MLE estimates
+ASE.h20 = mean((log.mhp[179:198] - fit.mle.sig_h20$f)^2)
+ASEexp.h20 = mean((exp(log.mhp[179:198]) - exp(fit.mle.sig_h20$f))^2)
+ASEexp.h20 # 1.1B
+
+# MLP Model
+msp.178 = ts(log.mhp[1:178])
+
+# 5 Year Horizon
+mspFit.20 = mlp(msp.178, comb = 'median')
+f.20 = forecast(mspFit.20, h = 20)
+
+# Metrics
+ASE.mlp.exp.h20 = mean((exp(log.mhp[179:198]) - exp(f.20$mean))^2) # 1.72B
+rwfit.mlp20 = roll.win.rmse.nn.wge(log.mhp, horizon = 20, fit_model = mspFit.20) # 0.072
+
+# Forecasts
+plot(log.mhp, type = 'l', lwd = 1, main = 'MLP Univariate Long Term Forecast',
+     ylab = 'log Median Housing Sales Price', xlab = 'Time')
+points(seq(179,198), f.20$mean, type = 'l', col = 'red')
+
+# Zoomed In, 5 yr
+plot(seq(150,198,1),log.mhp[150:198], type = 'l', main = 'Univariate MLP Forecast, 1 Year',
+     ylab = 'log Median Housing Sales Price', xlab = 'Time')
+points(seq(179,198,1), f.20$mean, type = 'l', col = 'red')
+
+# Ensemble Model
+ensemble.20 = (fit.mle.sig_h20$f + f.20$mean)/2
+ensemble.20
+
+# Forecast
+plot(log.mhp, type = 'l', ylim=c(10.5, 13.1),
+     main = 'Ensemble Model, SPN & MLP Long Term Forecast', xlab = 'Time', 
+     ylab = 'log Median Housing Sales Price')
+lines(seq(179,198,1),ensemble.20,col = "red")
+
+# Zoomed In
+plot(seq(150,198,1),log.mhp[150:198], type = 'l', ylim=c(12.4, 13.1),
+     main = 'Ensemble Model, SPN & MLP Long Term Forecast', 
+     xlab = 'Time', ylab = 'log Median Housing Sales Price')
+lines(seq(179,198,1),ensemble.20,col = "red")
+
+# Metrics
+ASE.ensemble.20 = mean((exp(log.mhp[179:198]) - exp(ensemble.20))^2) # 1.658B
+ASE.ensemble.20
+RMSE.ensemble.20 = sqrt(mean(log.mhp[179:198] - ensemble.20)^2) # 0.0758
+RMSE.ensemble.20
+```
