@@ -107,7 +107,7 @@ summary(fed_housing_data)
 xmin_plot = 150
 ymin_plot = 12.3
 ymax_plot = 13.1
-ymax_future = 13.2
+ymax_future = 13.4
 ```
 
 # EDA
@@ -438,6 +438,8 @@ lines(seq((l+1),(l+h.long),1),f$f,col="red")
 lines(seq((l+1),(l+h.long),1),f$ll,col="blue",lty=3) # lty=3 for dotted line
 lines(seq((l+1),(l+h.long),1),f$ul,col="blue",lty=3)
 ```
+
+Unsurprisingly, the future forecasts didn't increase with time.  This is similar to the forecasts we used for predictions.
 
 # Exogenous Variable Forecasts
 
@@ -1149,41 +1151,68 @@ plot(seq(xmin_plot,l,1),x.long$Median_Sales_Price[xmin_plot:l],type="l",col="bla
 lines(seq((l-h.long+1),l,1),preds$pred,col="red")
 ```
 
+The short term ASE is 589 M and the long term ASE is 1.4 B.
+
+In order to forecast out past the current date, we had to make forecasts for the exogenous variables as well.
+
 ```{r MLR future forecasts of exogenous variables}
+x = fed_housing_data
+x$Year_Quarter = c()
+fore_df <- as.data.frame(matrix(0, nrow = h.long, ncol = ncol(x)))
+colnames(fore_df) <- colnames(x)
 
+# Ownership Rate
+x = fed_housing_data$Ownership_Rate 
+est = est.arma.wge(x,p=9,q=1)
+f = fore.arima.wge(x,phi=est$phi,theta=est$theta,n.ahead=h.long,lastn=FALSE,plot=FALSE)
+fore_df$Ownership_Rate[1:h.long] = f$f
 
-f = fore.arima.wge(x,d=1,phi=est$phi,theta=est$theta,n.ahead=h.short,lastn=FALSE,plot=FALSE)
-fit=arima(x.short$Median_Sales_Price[t.train.short],order=c(2,0,0),xreg=cbind(t.train.short,x.short$Housing_Units_Completed_l21[t.train.short],x.short$Supply_New_Houses_l9[t.train.short],x.short$Housing_Price_Index[t.train.short]))
-preds = predict(fit,newxreg = data.frame(t=t.test.short,Housing_Units_Completed_l21=x.short$Housing_Units_Completed_l21[t.test.short],Supply_New_Houses_l9=x.short$Supply_New_Houses_l9[t.test.short],Housing_Price_Index=x.short$Housing_Price_Index[t.test.short]))
-plot(seq(xmin_plot,l+h.short,1),x[xmin_plot:(l+h.short)],type="l",col="black",xlab="Time",ylab="log Median Housing Sales Price",main="ARIMA(1,1,2) Short Term Forecast",ylim=c(ymin_plot,ymax_future))
-lines(seq((l+1),(l+h.short),1),f$f,col="red")
-lines(seq((l+1),(l+h.short),1),f$ll,col="blue",lty=3) # lty=3 for dotted line
-lines(seq((l+1),(l+h.short),1),f$ul,col="blue",lty=3)
-f = fore.arima.wge(x,d=1,phi=est$phi,theta=est$theta,n.ahead=h.long,lastn=FALSE,plot=FALSE)
-plot(seq(xmin_plot,l+h.long,1),x[xmin_plot:(l+h.long)],type="l",col="black",xlab="Time",ylab="log Median Housing Sales Price",main="ARIMA(1,1,2) Long Term Forecast",ylim=c(ymin_plot,ymax_future))
-lines(seq((l+1),(l+h.long),1),f$f,col="red")
-lines(seq((l+1),(l+h.long),1),f$ll,col="blue",lty=3) # lty=3 for dotted line
-lines(seq((l+1),(l+h.long),1),f$ul,col="blue",lty=3)
+# Housing Units Complete
+x = fed_housing_data$Housing_Units_Completed  
+est = est.arma.wge(x,p=9,q=1)
+f = fore.arima.wge(x,phi=est$phi,theta=est$theta,n.ahead=h.long,lastn=FALSE,plot=FALSE)
+fore_df$Housing_Units_Completed[1:h.long] = f$f
+
+# Housing Price Index
+x = fed_housing_data$Housing_Price_Index 
+d = artrans.wge(x,1)
+d2 = artrans.wge(d,1)
+d3 = artrans.wge(d2,c(0,-1))
+dev.off()
+est = est.arma.wge(d3,p=6,q=5)
+m = mult.wge(fac1=est$phi,fac2=c(0,-1))
+f = fore.arima.wge(x,d=2,phi=m$model.coef,theta=est$theta,n.ahead=h.long,lastn=FALSE, plot=FALSE)
+fore_df$Housing_Price_Index[1:h.long] = f$f
+
+# Supply of New Houses
+x = fed_housing_data$Supply_New_Houses   
+est = est.arma.wge(x,p=1,q=1)
+f = fore.arima.wge(x,phi=est$phi,theta=est$theta,n.ahead=h.long,lastn=FALSE, plot=FALSE)
+fore_df$Supply_New_Houses[1:h.long] = f$f
+
+# Forecast df
+x = fed_housing_data
+x$Year_Quarter = c()
+fed_housing_data_forecast <- rbind(x, fore_df)
 ```
 
 ```{r MLR future forecasts}
-
-
-f = fore.arima.wge(x,d=1,phi=est$phi,theta=est$theta,n.ahead=h.short,lastn=FALSE,plot=FALSE)
-fit=arima(x.short$Median_Sales_Price[t.train.short],order=c(2,0,0),xreg=cbind(t.train.short,x.short$Housing_Units_Completed_l21[t.train.short],x.short$Supply_New_Houses_l9[t.train.short],x.short$Housing_Price_Index[t.train.short]))
-preds = predict(fit,newxreg = data.frame(t=t.test.short,Housing_Units_Completed_l21=x.short$Housing_Units_Completed_l21[t.test.short],Supply_New_Houses_l9=x.short$Supply_New_Houses_l9[t.test.short],Housing_Price_Index=x.short$Housing_Price_Index[t.test.short]))
-plot(seq(xmin_plot,l+h.short,1),x[xmin_plot:(l+h.short)],type="l",col="black",xlab="Time",ylab="log Median Housing Sales Price",main="ARIMA(1,1,2) Short Term Forecast",ylim=c(ymin_plot,ymax_future))
-lines(seq((l+1),(l+h.short),1),f$f,col="red")
-lines(seq((l+1),(l+h.short),1),f$ll,col="blue",lty=3) # lty=3 for dotted line
-lines(seq((l+1),(l+h.short),1),f$ul,col="blue",lty=3)
-f = fore.arima.wge(x,d=1,phi=est$phi,theta=est$theta,n.ahead=h.long,lastn=FALSE,plot=FALSE)
-plot(seq(xmin_plot,l+h.long,1),x[xmin_plot:(l+h.long)],type="l",col="black",xlab="Time",ylab="log Median Housing Sales Price",main="ARIMA(1,1,2) Long Term Forecast",ylim=c(ymin_plot,ymax_future))
-lines(seq((l+1),(l+h.long),1),f$f,col="red")
-lines(seq((l+1),(l+h.long),1),f$ll,col="blue",lty=3) # lty=3 for dotted line
-lines(seq((l+1),(l+h.long),1),f$ul,col="blue",lty=3)
+x = fed_housing_data_forecast
+x$Housing_Units_Completed_l21 = dplyr::lag(x$Housing_Units_Completed,21)
+x$Supply_New_Houses_l9 = dplyr::lag(x$Supply_New_Houses,9)
+t=1:l
+t.fore.short = (l+1):(l+h.short)
+t.fore.long = (l+1):(l+h.long)
+fit=arima(x$Median_Sales_Price[t],order=c(2,0,0),xreg=cbind(t,x$Housing_Units_Completed_l21[t],x$Supply_New_Houses_l9[t],x$Housing_Price_Index[t]))
+preds = predict(fit,newxreg = data.frame(t=t.fore.short,Housing_Units_Completed_l21=x$Housing_Units_Completed_l21[t.fore.short],Supply_New_Houses_l9=x$Supply_New_Houses_l9[t.fore.short],Housing_Price_Index=x$Housing_Price_Index[t.fore.short]))
+plot(seq(xmin_plot,l+h.short,1),fed_housing_data$Median_Sales_Price[xmin_plot:(l+h.short)],type="l",col="black",xlab="Time",ylab="log Median Housing Sales Price",main="MLR Short Term Forecast",ylim=c(ymin_plot,ymax_future))
+lines(seq((l+1),(l+h.short),1),preds$pred,col="red")
+preds = predict(fit,newxreg = data.frame(t=t.fore.long,Housing_Units_Completed_l21=x$Housing_Units_Completed_l21[t.fore.long],Supply_New_Houses_l9=x$Supply_New_Houses_l9[t.fore.long],Housing_Price_Index=x$Housing_Price_Index[t.fore.long]))
+plot(seq(xmin_plot,l+h.long,1),fed_housing_data$Median_Sales_Price[xmin_plot:(l+h.long)],type="l",col="black",xlab="Time",ylab="log Median Housing Sales Price",main="MLR Long Term Forecast",ylim=c(ymin_plot,ymax_future))
+lines(seq((l+1),(l+h.long),1),preds$pred,col="red")
 ```
 
-The short term ASE is 589 M and the long term ASE is 1.4 B.
+The MLR forecasts continued to increase with time.
 
 ## VAR Model
 
@@ -1198,15 +1227,19 @@ The model with lag = 4 was chosen.
 ```{r VAR ASEs}
 fit = VAR(x,p=4,type='both') 
 summary(fit) # trend and const were significant, but only lag up to 2 for variable of interest, huc not very predictive
+
+fit = VAR(x[1:(l-h.short),],p=4,type='both') 
 preds=predict(fit,n.ahead=h.short)
 ase = mean((fed_housing_data_NL$Median_Sales_Price[(l-h.short+1):l]-exp(preds$fcst$Median_Sales_Price[,1]))^2)/1e6
-ase # 46.3595
+ase # 43.63274
 plot(seq(1,l,1),x$Median_Sales_Price,type="b")
 points(seq(l-h.short+1,l,1),preds$fcst$Median_Sales_Price[1:h.short,1],type="b",pch=15,col="blue")
 fanchart(preds)
+
+fit = VAR(x[1:(l-h.long),],p=4,type='both') 
 preds=predict(fit,n.ahead=h.long)
 ase = mean((fed_housing_data_NL$Median_Sales_Price[(l-h.long+1):l]-exp(preds$fcst$Median_Sales_Price[,1]))^2)/1e6
-ase # 3499.949
+ase # 3009.65
 plot(seq(1,l,1),x$Median_Sales_Price,type="b")
 points(seq(l-h.long+1,l,1),preds$fcst$Median_Sales_Price[1:h.long,1],type="b",pch=15,col="blue")
 fanchart(preds)
@@ -1215,12 +1248,13 @@ fanchart(preds)
 ```{r VAR PPT Plots}
 x = fed_housing_data
 x$Year_Quarter = c()
-fit = VAR(x,p=4,type='both') 
+fit = VAR(x[1:(l-h.short),],p=4,type='both') 
 preds=predict(fit,n.ahead=h.short)
 plot(seq(xmin_plot,l,1),x$Median_Sales_Price[xmin_plot:l],type="l",col="black",xlab="Time",ylab="log Median Housing Sales Price",main="VAR Short Term Forecast",ylim=c(ymin_plot,ymax_plot))
 lines(seq((l-h.short+1),l,1),preds$fcst$Median_Sales_Price[,1],col="red")
 lines(seq((l-h.short+1),l,1),preds$fcst$Median_Sales_Price[,2],col="blue",lty=3) # 2nd column is lower bound
 lines(seq((l-h.short+1),l,1),preds$fcst$Median_Sales_Price[,3],col="blue",lty=3) # 3rd column is upper bound
+fit = VAR(x[1:(l-h.long),],p=4,type='both')
 preds=predict(fit,n.ahead=h.long)
 plot(seq(xmin_plot,l,1),x$Median_Sales_Price[xmin_plot:l],type="l",col="black",xlab="Time",ylab="log Median Housing Sales Price",main="VAR Long Term Forecast",ylim=c(ymin_plot,ymax_plot))
 lines(seq((l-h.long+1),l,1),preds$fcst$Median_Sales_Price[,1],col="red")
@@ -1229,6 +1263,28 @@ lines(seq((l-h.long+1),l,1),preds$fcst$Median_Sales_Price[,3],col="blue",lty=3)
 ```
 
 The VAR model has a very small short term ASE of 46.4 M.  This is even smaller than the signal plus noise model.  However, its long term ASE is larger than the MLR model.
+
+We forcasted out the VAR model for 1 year and 5 years. 
+
+```{r VAR future forecasts}
+x = fed_housing_data
+x$Year_Quarter = c()
+fit = VAR(x,p=4,type='both') 
+preds=predict(fit,n.ahead=h.short)
+plot(seq(xmin_plot,l+h.short,1),fed_housing_data$Median_Sales_Price[xmin_plot:(l+h.short)],type="l",col="black",xlab="Time",ylab="log Median Housing Sales Price",main="VAR Short Term Forecast",ylim=c(ymin_plot,ymax_plot))
+lines(seq((l+1),(l+h.short),1),preds$fcst$Median_Sales_Price[,1],col="red")
+lines(seq((l+1),(l+h.short),1),preds$fcst$Median_Sales_Price[,2],col="blue",lty=3) # 2nd column is lower bound
+lines(seq((l+1),(l+h.short),1),preds$fcst$Median_Sales_Price[,3],col="blue",lty=3) # 3rd column is upper bound
+fit = VAR(x,p=4,type='both')
+preds=predict(fit,n.ahead=h.long)
+plot(seq(xmin_plot,l+h.long,1),fed_housing_data$Median_Sales_Price[xmin_plot:(l+h.long)],type="l",col="black",xlab="Time",ylab="log Median Housing Sales Price",main="VAR Long Term Forecast",ylim=c(ymin_plot,ymax_plot))
+lines(seq((l+1),(l+h.long),1),preds$fcst$Median_Sales_Price[,1],col="red")
+lines(seq((l+1),(l+h.long),1),preds$fcst$Median_Sales_Price[,2],col="blue",lty=3)
+lines(seq((l+1),(l+h.long),1),preds$fcst$Median_Sales_Price[,3],col="blue",lty=3)
+
+plot(seq(xmin_plot,l+h.long,1),fed_housing_data$Median_Sales_Price[xmin_plot:(l+h.long)],type="l",col="black",xlab="Time",ylab="log Median Housing Sales Price",main="MLR Long Term Forecast",ylim=c(ymin_plot,ymax_future))
+lines(seq((l+1),(l+h.long),1),preds$pred,col="red")
+```
 
 # Neural Networks
 
@@ -2615,9 +2671,95 @@ ASE.ensemble.4
 RMSE.ensemble.4 = sqrt(mean(log.mhp[195:198] - ensemble.4)^2) # 0.0089
 RMSE.ensemble.4
 ```
+
 ## Long Term Ensemble: SPN + MLP
 
 ```{r Ensemble Model Long Term}
+log.mhp = fed_housing_data$Median_Sales_Price
+
+# SPN Fit with MLE estimates, using all data
+fit.mle.sig_h20 = fore.sigplusnoise.wge(log.mhp, linear = TRUE, method = 'mle', freq = 0, 
+                                        max.p = 6, n.ahead = 20, lastn = TRUE)
+
+# SPN Plot
+plot(log.mhp, type = 'l')
+lines(seq(179,198,1), fit.mle.sig_h20$f, col = "red")
+lines(seq(179,198,1), fit.mle.sig_h20$ll, lty = 3, col = "blue")
+lines(seq(179,198,1), fit.mle.sig_h20$ul, lty = 3, col = "blue")
+
+# Zoomed In
+plot(seq(150,198,1),log.mhp[150:198], type = 'l', ylim = c(12.3, 13.2), main = "Linear Signal with AR(6) Noise Long Term Forecast", 
+     xlab = "Time", ylab = "log Median Housing Sales Price")
+lines(seq(179,198,1), fit.mle.sig_h20$f, col = "red")
+lines(seq(179,198,1), fit.mle.sig_h20$ll, lty = 3, col = "blue")
+lines(seq(179,198,1), fit.mle.sig_h20$ul, lty = 3, col = "blue")
+
+# ASE with MLE estimates
+ASE.h20 = mean((log.mhp[179:198] - fit.mle.sig_h20$f)^2)
+ASEexp.h20 = mean((exp(log.mhp[179:198]) - exp(fit.mle.sig_h20$f))^2)
+ASEexp.h20 # 1.1B
+
+# MLP Model
+msp.178 = ts(log.mhp[1:178])
+
+# 5 Year Horizon
+mspFit.20 = mlp(msp.178, comb = 'median')
+f.20 = forecast(mspFit.20, h = 20)
+
+# Metrics
+ASE.mlp.exp.h20 = mean((exp(log.mhp[179:198]) - exp(f.20$mean))^2) # 1.72B
+rwfit.mlp20 = roll.win.rmse.nn.wge(log.mhp, horizon = 20, fit_model = mspFit.20) # 0.072
+
+# Forecasts
+plot(log.mhp, type = 'l', lwd = 1, main = 'MLP Univariate Long Term Forecast',
+     ylab = 'log Median Housing Sales Price', xlab = 'Time')
+points(seq(179,198), f.20$mean, type = 'l', col = 'red')
+
+# Zoomed In, 5 yr
+plot(seq(150,198,1),log.mhp[150:198], type = 'l', main = 'Univariate MLP Forecast, 1 Year',
+     ylab = 'log Median Housing Sales Price', xlab = 'Time')
+points(seq(179,198,1), f.20$mean, type = 'l', col = 'red')
+
+# Ensemble Model
+ensemble.20 = (fit.mle.sig_h20$f + f.20$mean)/2
+ensemble.20
+
+# Forecast
+plot(log.mhp, type = 'l', ylim=c(10.5, 13.1),
+     main = 'Ensemble Model, SPN & MLP Long Term Forecast', xlab = 'Time', 
+     ylab = 'log Median Housing Sales Price')
+lines(seq(179,198,1),ensemble.20,col = "red")
+
+# Zoomed In
+plot(seq(150,198,1),log.mhp[150:198], type = 'l', ylim=c(12.4, 13.1),
+     main = 'Ensemble Model, SPN & MLP Long Term Forecast', 
+     xlab = 'Time', ylab = 'log Median Housing Sales Price')
+lines(seq(179,198,1),ensemble.20,col = "red")
+
+# Zoomed in with Original Models
+plot(seq(150,198,1),log.mhp[150:198], type = 'l', ylim=c(12.4, 13.1),
+     main = 'Ensemble Model, SPN & MLP Long Term Forecast', 
+     sub = 'The ensemble model (red) takes the average of the SPN (orange) and the MLP (green) forecasts',  
+     xlab = 'Time', ylab = 'log Median Housing Sales Price')
+lines(seq(179,198,1),ensemble.20,col = "red")
+points(seq(179,198,1), f.20$mean, type = 'l', col = 'green')
+lines(seq(179,198,1), fit.mle.sig_h20$f, col = "orange")
+
+# Metrics
+ASE.ensemble.20 = mean((exp(log.mhp[179:198]) - exp(ensemble.20))^2) # 1.658B
+ASE.ensemble.20
+RMSE.ensemble.20 = sqrt(mean(log.mhp[179:198] - ensemble.20)^2) # 0.0758
+RMSE.ensemble.20
+```
+
+## Ensemble: MLR + SPN
+
+The long term plots for MLR seemed to be too low, and the long term plots for SPN seemed to be too high.  So we thought that combining them could improve the long term predictions.
+
+```{r Ensemble Model MLR + SPN}
+
+
+
 log.mhp = fed_housing_data$Median_Sales_Price
 
 # SPN Fit with MLE estimates, using all data

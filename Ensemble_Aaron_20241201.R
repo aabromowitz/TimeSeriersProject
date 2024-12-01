@@ -161,9 +161,10 @@ mlr_pred_long = preds$pred
 
 x = fed_housing_data
 x$Year_Quarter = c()
-fit = VAR(x,p=4,type='both') 
+fit = VAR(x[1:(l-h.short),],p=4,type='both')
 preds=predict(fit,n.ahead=h.short)
 var_pred_short = preds$fcst$Median_Sales_Price[,1]
+fit = VAR(x[1:(l-h.long),],p=4,type='both')
 preds=predict(fit,n.ahead=h.long)
 var_pred_long = preds$fcst$Median_Sales_Price[,1]
 
@@ -171,9 +172,9 @@ ensemble1_short = (mlr_pred_short + var_pred_short)/2
 ensemble1_long = (mlr_pred_long + var_pred_long)/2
 
 ase = mean((fed_housing_data_NL$Median_Sales_Price[(l-h.short+1):l]-exp(ensemble1_short))^2)/1e6
-ase # 158.8345
+ase # 190.5264
 ase = mean((fed_housing_data_NL$Median_Sales_Price[(l-h.long+1):l]-exp(ensemble1_long))^2)/1e6
-ase # 1983.43
+ase # 1048.507
 
 plot(seq(xmin_plot,l,1),x$Median_Sales_Price[xmin_plot:l],type="l",col="black",xlab="Time",ylab="log Median Housing Sales Price",main="VAR Short Term Forecast",ylim=c(ymin_plot,ymax_plot))
 lines(seq((l-h.short+1),l,1),ensemble1_short,col="red")
@@ -205,9 +206,9 @@ ensemble3_short = (var_pred_short + spn_pred_short)/2
 ensemble3_long = (var_pred_long + spn_pred_long)/2
 
 ase = mean((fed_housing_data_NL$Median_Sales_Price[(l-h.short+1):l]-exp(ensemble3_short))^2)/1e6
-ase # 43.51342
+ase # 28.44064
 ase = mean((fed_housing_data_NL$Median_Sales_Price[(l-h.long+1):l]-exp(ensemble3_long))^2)/1e6
-ase # 1321.944
+ase # 1853.413
 
 plot(seq(xmin_plot,l,1),x$Median_Sales_Price[xmin_plot:l],type="l",col="black",xlab="Time",ylab="log Median Housing Sales Price",main="VAR Short Term Forecast",ylim=c(ymin_plot,ymax_plot))
 lines(seq((l-h.short+1),l,1),ensemble3_short,col="red")
@@ -219,9 +220,9 @@ ensemble4_short = (var_pred_short + 2*spn_pred_short)/3
 ensemble4_long = (var_pred_long + 2*spn_pred_long)/3
 
 ase = mean((fed_housing_data_NL$Median_Sales_Price[(l-h.short+1):l]-exp(ensemble4_short))^2)/1e6
-ase # 44.83036
+ase # 31.79989
 ase = mean((fed_housing_data_NL$Median_Sales_Price[(l-h.long+1):l]-exp(ensemble4_long))^2)/1e6
-ase # 1060.375
+ase # 1554.375
 
 plot(seq(xmin_plot,l,1),x$Median_Sales_Price[xmin_plot:l],type="l",col="black",xlab="Time",ylab="log Median Housing Sales Price",main="VAR Short Term Forecast",ylim=c(ymin_plot,ymax_plot))
 lines(seq((l-h.short+1),l,1),ensemble4_short,col="red")
