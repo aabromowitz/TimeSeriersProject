@@ -145,7 +145,6 @@ BSSim = function(ts,res,fit,num_back,horizon) {
 
 # BSSamples = 100000
 BSSamples = 2000 # I'm worried 100k will take a really long time, so make it less
-# BSSamples = 100
 
 # holder = matrix(nrow = BSSamples,ncol = 50)
 holder = matrix(nrow = BSSamples,ncol = h.long)
@@ -174,7 +173,7 @@ print(percentiles_per_column)
 xtNewForBS = colMeans(holder)
 
 # plotts.wge(c(xtTrain-est$res,xtNewForBS))
-plotts.wge(c(fit.mlp$fitted,xtNewForBS),ylim=c(min(fit.mlp$fitted)-.1,max(fit.mlp$fitted)+.1)) # black is predictions
-lines(seq(lf+1,lf+h.long,1),percentiles_per_column[,1],col = "blue") # blue are confidence intervals
+plotts.wge(c(fit$fitted,xtNewForBS),ylim=c(min(fit$fitted)-.1,max(fit$fitted)+.1))
+lines(seq(lf+1,lf+h.long,1),percentiles_per_column[,1],col = "blue")
 lines(seq(lf+1,lf+h.long,1),percentiles_per_column[,2],col = "blue")
-lines(seq(lf+1,lf+h.long,1),xt[(l-h.long+1):l],col = "red") # Actual values
+lines(seq(lf+1,lf+h.long,1),xt[(l-h.long+1):l],col = "red")
