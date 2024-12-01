@@ -755,10 +755,11 @@ lines(seq(195,198,1), fit.mle.sig_h4$ll, lty = 3, col = "blue")
 lines(seq(195,198,1), fit.mle.sig_h4$ul, lty = 3, col = "blue")
 
 # Zoomed In Plot
-plot(log.mhp[149:198], type = 'l', ylim = c(12.3, 13.2), main = "1 Year Forecast for Signal Plus Noise Model")
-lines(seq(47,50,1), fit.mle.sig_h4$f, col = "red")
-lines(seq(47,50,1), fit.mle.sig_h4$ll, lty = 3, col = "blue")
-lines(seq(47,50,1), fit.mle.sig_h4$ul, lty = 3, col = "blue")
+plot(seq(150,198,1),log.mhp[150:198], type = 'l', ylim = c(12.3, 13.2), main = "Linear Signal with AR(6) Noise Short Term Forecast", 
+     xlab = "Time", ylab = "log Median Housing Sales Price")
+lines(seq(195,198,1), fit.mle.sig_h4$f, col = "red")
+lines(seq(195,198,1), fit.mle.sig_h4$ll, lty = 3, col = "blue")
+lines(seq(195,198,1), fit.mle.sig_h4$ul, lty = 3, col = "blue")
 
 # ASE with MLE estimates
 ASE.h4 = mean((log.mhp[195:198] - fit.mle.sig_h4$f)^2)
@@ -789,10 +790,11 @@ lines(seq(179,198,1), fit.mle.sig_h20$ll, lty = 3, col = "blue")
 lines(seq(179,198,1), fit.mle.sig_h20$ul, lty = 3, col = "blue")
 
 # Zoomed In
-plot(log.mhp[149:198], type = 'l', ylim = c(12.3, 13.2), main = "1 Year Forecast for Signal Plus Noise Model")
-lines(seq(31,50,1), fit.mle.sig_h20$f, col = "red")
-lines(seq(31,50,1), fit.mle.sig_h20$ll, lty = 3, col = "blue")
-lines(seq(31,50,1), fit.mle.sig_h20$ul, lty = 3, col = "blue")
+plot(seq(150,198,1),log.mhp[150:198], type = 'l', ylim = c(12.3, 13.2), main = "Linear Signal with AR(6) Noise Long Term Forecast", 
+     xlab = "Time", ylab = "log Median Housing Sales Price")
+lines(seq(179,198,1), fit.mle.sig_h20$f, col = "red")
+lines(seq(179,198,1), fit.mle.sig_h20$ll, lty = 3, col = "blue")
+lines(seq(179,198,1), fit.mle.sig_h20$ul, lty = 3, col = "blue")
 
 # ASE with MLE estimates
 ASE.h20 = mean((log.mhp[179:198] - fit.mle.sig_h20$f)^2)
@@ -1185,10 +1187,13 @@ plot(log.mhp, type = 'l', lwd = 1, main = 'Univariate Forecasts, 1 and 5 Years')
 points(seq(195,198), f.4$mean, type = 'l', col = 'red', lwd = 2)
 points(seq(179,198), f.20$mean, type = 'l', col = 'red', lwd = 2)
 
-# Zoomed In
-plot(log.mhp[149:198], type = 'l', lwd = 1, main = 'Univariate Forecasts, 1 and 5 Years')
-points(seq(47,50), f.4$mean, type = 'l', col = 'red', lwd = 2)
-points(seq(31,50), f.20$mean, type = 'l', col = 'red', lwd = 2)
+# Zoomed In, 1 yr
+plot(seq(150,198,1),log.mhp[150:198], type = 'l', lwd = 1, main = 'Univariate MLP Forecast, 1 Year')
+points(seq(195,198,1), f.4$mean, type = 'l', col = 'red', lwd = 2)
+
+# Zoomed In, 5 yr
+plot(seq(150,198,1), log.mhp[149:198], type = 'l', lwd = 1, main = 'Univariate MLP Forecast, 5 Years')
+points(seq(179,198,1), f.20$mean, type = 'l', col = 'red', lwd = 2)
 ```
 
 ## Confidence Intervals for Univariate Model
@@ -1280,18 +1285,18 @@ result = fit.mlp$fitted
 
 # Alex edited seq because lines were being plotted that didn't line up with the actual time
 # plotts.wge(c(xtTrain-est$res,xtNewForBS))
-plot(log.mhp[6:198], type = 'l', main = 'Univariate MLP 1 Year Forecast with Confidence Intervals', 
-     ylim=c(min(fit.mlp$fitted)-.1,max(fit.mlp$fitted)+.1))
+plot(log.mhp[6:198], type = 'l', main = 'Univariate MLP Short Term Forecast', 
+     xlab = 'Time', ylab = 'log Median Housing Sales Price', ylim=c(10.5,13.1))
 lines(seq(190,193,1),percentiles_per_column[,1], lty = 3, col = "blue")
 lines(seq(190,193,1),percentiles_per_column[,2], lty = 3, col = "blue")
 lines(seq(190,193,1),xtNewForBS, col = "red")
 
 # Zoomed In
-plot(log.mhp[149:198], type = 'l', main = 'Univariate MLP 1 Year Forecast with Confidence Intervals', 
-     ylim=c(min(fit.mlp$fitted)-.1,max(fit.mlp$fitted)+.1))
-lines(seq(47,50,1),percentiles_per_column[,1], lty = 3, col = "blue")
-lines(seq(47,50,1),percentiles_per_column[,2], lty = 3, col = "blue")
-lines(seq(47, 50,1),xtNewForBS,ylim=c(min(fit.mlp$fitted)-.1,max(fit.mlp$fitted)+.1),col = "red")
+plot(seq(150,198,1), log.mhp[150:198], type = 'l', main = 'Univariate MLP Short Term Forecast', 
+     xlab = 'Time', ylab = 'log Median Housing Sales Price', ylim=c(12.4,13.1))
+lines(seq(195,198,1),percentiles_per_column[,1], lty = 3, col = "blue")
+lines(seq(195,198,1),percentiles_per_column[,2], lty = 3, col = "blue")
+lines(seq(195,198,1),xtNewForBS,ylim=c(min(fit.mlp$fitted)-.1,max(fit.mlp$fitted)+.1),col = "red")
 
 # Horizon = 20  
 h.long = 20
@@ -1365,18 +1370,18 @@ xtNewForBS = colMeans(holder)
 
 # Alex edited seq because lines were being plotted that didn't line up with the actual time
 # plotts.wge(c(xtTrain-est$res,xtNewForBS))
-plot(log.mhp[6:198], type = 'l', main = 'Univariate MLP 5 Year Forecast with Confidence Intervals', 
-     ylim=c(min(fit.mlp$fitted)-.1,max(fit.mlp$fitted)+.1))
+plot(log.mhp[6:198], type = 'l', main = 'Univariate MLP Long Term Forecast', 
+     xlab = 'Time', ylab = 'log Median Housing Sales Price', ylim=c(10.5,13.1))
 lines(seq(174,193,1),percentiles_per_column[,1], lty = 3, col = "blue")
 lines(seq(174,193,1),percentiles_per_column[,2], lty = 3, col = "blue")
 lines(seq(174,193,1),xtNewForBS,col = "red")
 
 # Zoomed In
-plot(log.mhp[149:198], type = 'l', main = 'Univariate MLP 5 Year Forecast with Confidence Intervals',
-     ylim=c(min(fit.mlp$fitted)-.1,max(fit.mlp$fitted)+.1))
-lines(seq(31,50,1),percentiles_per_column[,1], lty = 3, col = "blue")
-lines(seq(31,50,1),percentiles_per_column[,2], lty = 3, col = "blue")
-lines(seq(31,50,1),xtNewForBS, col = "red")
+plot(seq(150,198,1),log.mhp[150:198], type = 'l', main = 'Univariate MLP Long Term Forecast', 
+     xlab = 'Time', ylab = 'log Median Housing Sales Price', ylim=c(12.4,13.1))
+lines(seq(179,198,1),percentiles_per_column[,1], lty = 3, col = "blue")
+lines(seq(179,198,1),percentiles_per_column[,2], lty = 3, col = "blue")
+lines(seq(179,198,1),xtNewForBS, col = "red")
 
 
 ```
@@ -1708,7 +1713,7 @@ result = fit.mlp$fitted
 # Alex edited seq because lines were being plotted that didn't line up with the actual time
 # plotts.wge(c(xtTrain-est$res,xtNewForBS))
 plot(log.mhp[6:198], type = 'l', main = 'Multivariate MLP 1 Year Forecast with Confidence Intervals', 
-     ylim=c(min(fit.mlp$fitted)-.1,max(fit.mlp$fitted)+.1))
+     xlab = 'Time', ylab = 'log Median Housing Sales Price', ylim=c(12.4,13.1))
 lines(seq(190,193,1),percentiles_per_column[,1], lty = 3, col = "blue")
 lines(seq(190,193,1),percentiles_per_column[,2], lty = 3, col = "blue")
 lines(seq(190,193,1),xtNewForBS, col = "red")
@@ -1794,7 +1799,7 @@ xtNewForBS = colMeans(holder)
 # Alex edited seq because lines were being plotted that didn't line up with the actual time
 # plotts.wge(c(xtTrain-est$res,xtNewForBS))
 plot(log.mhp[6:198], type = 'l', main = 'Multivariate MLP 5 Year Forecast with Confidence Intervals', 
-     ylim=c(min(fit.mlp$fitted)-.1,max(fit.mlp$fitted)+.1))
+     xlab = 'Time', ylab = 'log Median Housing Sales Price', ylim=c(min(fit.mlp$fitted)-.1,max(fit.mlp$fitted)+.1))
 lines(seq(174,193,1),percentiles_per_column[,1], lty = 3, col = "blue")
 lines(seq(174,193,1),percentiles_per_column[,2], lty = 3, col = "blue")
 lines(seq(174,193,1),xtNewForBS,col = "red")
