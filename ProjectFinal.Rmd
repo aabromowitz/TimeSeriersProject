@@ -2543,6 +2543,15 @@ plot(seq(150,198,1),log.mhp[150:198], type = 'l', ylim=c(12.4, 13.1),
      xlab = 'Time', ylab = 'log Median Housing Sales Price')
 lines(seq(195,198,1),ensemble.4,col = "red")
 
+# Zoomed In with original models
+plot(seq(150,198,1),log.mhp[150:198], type = 'l', ylim=c(12.4, 13.1),
+     main = 'Ensemble Model, VAR & MLP Short Term Forecast', 
+     sub = 'The ensemble model (red) takes the average of the VAR (blue) and MLP (green) models',
+     xlab = 'Time', ylab = 'log Median Housing Sales Price')
+lines(seq(195,198,1),ensemble.4,col = "red")
+points(seq(195,198,1),preds$fcst$Median_Sales_Price[1:h.short,1],type="l", col="blue")
+points(seq(195,198,1), f.4$mean, type = 'l', col = 'green')
+
 # Metrics
 ASE.ensemble.4 = mean((exp(log.mhp[195:198]) - exp(ensemble.4))^2) # 63.36M
 ASE.ensemble.4
@@ -2612,6 +2621,15 @@ plot(seq(150,198,1),log.mhp[150:198], type = 'l', ylim=c(12.4, 13.1),
      main = 'Ensemble Model, SPN & MLP Long Term Forecast', 
      xlab = 'Time', ylab = 'log Median Housing Sales Price')
 lines(seq(179,198,1),ensemble.20,col = "red")
+
+# Zoomed in with Original Models
+plot(seq(150,198,1),log.mhp[150:198], type = 'l', ylim=c(12.4, 13.1),
+     main = 'Ensemble Model, SPN & MLP Long Term Forecast', 
+     sub = 'The ensemble model (red) takes the average of the SPN (orange) and the MLP (green) forecasts',  
+     xlab = 'Time', ylab = 'log Median Housing Sales Price')
+lines(seq(179,198,1),ensemble.20,col = "red")
+points(seq(179,198,1), f.20$mean, type = 'l', col = 'green')
+lines(seq(179,198,1), fit.mle.sig_h20$f, col = "orange")
 
 # Metrics
 ASE.ensemble.20 = mean((exp(log.mhp[179:198]) - exp(ensemble.20))^2) # 1.658B
