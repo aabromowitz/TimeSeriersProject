@@ -102,6 +102,11 @@ train = fed_housing_data[1:168,]
 test = fed_housing_data[169:198,]
 
 summary(fed_housing_data)
+
+# plotting variables
+xmin_plot = 150
+ymin_plot = 12.3
+ymax_plot = 13.1
 ```
 
 # EDA
@@ -123,6 +128,13 @@ The realization looks like it is increasing linearly. This data could be model w
 The realization appears to be non stationary. There is evidence that the data is increasing over time. In addition, the variation appears much higher in later years as in earlier years, showing that variance is increasing over time as well. When modeling, it may be useful to take the logarithm of the data before modeling.
 
 The ACF shows very slowly dampening autocorrelations. The parzen window also shows a very low frequency. This could points to a (1-B) term which could be removed with a high-pass difference filter.
+
+To fix the problem with the increasing variance.  We decided to take the log of the Mean Housing Price.
+
+```{r Plot log Median Housing Sales Price}
+plot(ts(log(mhp), frequency=4,start=c(1965,1)),xlab='Year',ylab='Log Housing price')
+title(main='Log Median US Housing Price from 1965')
+```
 
 ## Home Ownership Rate
 
@@ -325,20 +337,20 @@ d = artrans.wge(x,1)
 dev.off()
 est = est.arma.wge(d,p=1,q=2)
 f = fore.arima.wge(x,d=1,phi=est$phi,theta=est$theta,n.ahead=h.short,lastn=TRUE,plot=FALSE)
-plot(seq(150,l,1),x[150:l],type="l",col="black",xlab="Time",ylab="log Median Housing Sales Price",main="ARIMA(1,1,2) Short Term Forecast",ylim=c(min(min(x[150:l]),min(f$ll)),max(max(f$ul),max(x))))
+plot(seq(xmin_plot,l,1),x[xmin_plot:l],type="l",col="black",xlab="Time",ylab="log Median Housing Sales Price",main="ARIMA(1,1,2) Short Term Forecast",ylim=c(ymin_plot,ymax_plot))
 lines(seq((l-h.short+1),l,1),f$f,col="red")
-lines(seq((l-h.short+1),l,1),f$ll,col="blue")
-lines(seq((l-h.short+1),l,1),f$ul,col="blue")
+lines(seq((l-h.short+1),l,1),f$ll,col="blue",lty=3) # lty=3 for dotted line
+lines(seq((l-h.short+1),l,1),f$ul,col="blue",lty=3)
 f = fore.arima.wge(x,d=1,phi=est$phi,theta=est$theta,n.ahead=h.long,lastn=TRUE,plot=FALSE)
-plot(seq(150,l,1),x[150:l],type="l",col="black",xlab="Time",ylab="log Median Housing Sales Price",main="ARIMA(1,1,2) Long Term Forecast",ylim=c(min(min(x[150:l]),min(f$ll)),max(max(f$ul),max(x))))
+plot(seq(xmin_plot,l,1),x[xmin_plot:l],type="l",col="black",xlab="Time",ylab="log Median Housing Sales Price",main="ARIMA(1,1,2) Long Term Forecast",ylim=c(ymin_plot,ymax_plot))
 lines(seq((l-h.long+1),l,1),f$f,col="red")
-lines(seq((l-h.long+1),l,1),f$ll,col="blue")
-lines(seq((l-h.long+1),l,1),f$ul,col="blue")
+lines(seq((l-h.long+1),l,1),f$ll,col="blue",lty=3)
+lines(seq((l-h.long+1),l,1),f$ul,col="blue",lty=3)
 ```
 
 ```{r ARIMA(1,1,2) model characteristics}
 est = est.arma.wge(d.log.mhp,p=1,q=2)
-f = fore.arima.wge(log.mhp,d=1,phi=est$phi,theta=est$theta,n.ahead=h.short,lastn=TRUE)
+f = fore.arima.wge(log.mhp,d=1,phi=est$phi,theta=est$theta,n.ahead=h.short,lastn=TRUE,plot=FALSE)
 aic = est$aic
 aic # -7.188559
 resid = f$resid
@@ -358,13 +370,14 @@ Now we will look at residuals to make sure that they are white noise.
 
 ```{r ARIMA(1,1,2) residual plots}
 plotts.wge(resid)
-acf(resid,lag.max=100) 
+title(main="Residuals")
+acf(resid,lag.max=100,main="ACF of Residuals") 
 parzen.wge(resid)
 ```
 
 They appear to be white noise, and the ACF has very few values above 0.2.  We will run a Ljung-Box test to be sure.
 
-```{r ARIMA(1,2,2) Ljung test}
+```{r ARIMA(1,1,2) Ljung test}
 ljung.wge(resid,K=24,p=1,q=2) # p = 0.2272667, white
 ljung.wge(resid,K=48,p=1,q=2) # p = 0.5584003, white
 ```
@@ -382,7 +395,7 @@ We also want to make sure that the ACFs and Parzen Windows generated from ARIMA(
 set.seed(2)
 sims = 10
 ACF = acf(log.mhp, plot = "FALSE")
-plot(ACF$lag ,ACF$acf , type = "l", lwd = 6)
+plot(ACF$lag ,ACF$acf , type = "l", lwd = 6,xlab="Lag",ylab="ACF",main="True ACF vs Generated Data")
 for( i in 1: sims)
 {
   ACF2 = acf(gen.arima.wge(l, phi = est$phi, theta=est$theta,d=1, plot="FALSE"), plot = "FALSE")
@@ -393,7 +406,7 @@ for( i in 1: sims)
 set.seed(3)
 sims = 10
 SpecDen = parzen.wge(log.mhp, plot = "FALSE")
-plot(SpecDen$freq,SpecDen$pzgram, type = "l", lwd = 6)
+plot(SpecDen$freq,SpecDen$pzgram, type = "l", lwd = 6,xlab="Frequency",ylab="dB",main="True Spectral Density vs Generated Data")
 for( i in 1: sims)
 {
   SpecDen2 = parzen.wge(gen.aruma.wge(l,phi=est$phi, theta=est$theta,d=1, plot ="FALSE"), plot = "FALSE")
@@ -692,6 +705,20 @@ abline(h=0)
 
 # Quicker way to plot residuals: plot(reg$res, type = "l")
 ```
+```{r signal plus noise all residuals}
+x = fed_housing_data
+reg = slr.wge(x$Median_Sales_Price)
+plot(reg$res, type = "l")
+abline(h=0)
+
+t=1:198
+plotts.wge(x$Median_Sales_Price,xlab="Time",ylab="log Median House Price",main="Linear fit to log Median House Price")
+fit = reg$b0hat + t*reg$b1hat
+points(fit, type = "l")
+
+aic5.ar.wge(reg$res,p=0:10)
+```
+
 ### Choosing estimates for the ARMA portion of the Signal Plus Noise Model
 
 After comparing the MLE and Burg estimates on AIC, AICC, and BIC, we determined the MLE estimates were better for all three metrics. All estimates chose an AR(6), with the exception of the MLE estimate using the BIC, which chose an AR(2). We will move forward with the AR(6) model, compare the forecasts visually, and test whether the Average Square Error (ASE) is better for the MLE or the Burg estimates. The MLE estimates have better ASEs, as expected. While there isn't much difference visually between the two, the MLE lower limit (blue line) does contain the actual values, whereas the Burg lower limit (green line) are slightly more narrow and doesn't capture one of the actual values. Given the other evidence for using the MLE estimates, we will move forward with MLE estimates for an AR(6).
@@ -929,7 +956,7 @@ ten.generated = list(spn.mle.ar6.1, spn.mle.ar6.2, spn.mle.ar6.3, spn.mle.ar6.4,
 # Compare Spectral Densities
 sims = 10
 SpecDen = parzen.wge(log.mhp, plot = FALSE)
-plot(SpecDen$freq,SpecDen$pzgram, type = "l", lwd = 3)
+plot(SpecDen$freq,SpecDen$pzgram, type = "l", lwd = 3,xlab="Frequency",ylab="dB",main="True Spectral Density vs Generated Data")
 
 for( i in 1: sims)
 {
@@ -940,20 +967,25 @@ for( i in 1: sims)
 #Compare ACFs
 sims = 10
 ACF = acf(log.mhp, plot = "FALSE")
-plot(ACF$lag ,ACF$acf , type = "l", lwd = 4)
+plot(ACF$lag ,ACF$acf , type = "l", lwd = 4,xlab="Lag",ylab="ACF",main="True ACF vs Generated Data")
 
 for( i in 1: sims)
 {
    ACF2 = acf(ten.generated[[i]], plot = "FALSE")
    lines(ACF2$lag ,ACF2$acf, lwd = 1, col = "red")
 }
+
+# Residuals
+plot(fit.mle.sig$resid, xlab="Time", ylab="", main="Residuals",type="b",col = "black", pch = 19)
+acf(fit.mle.sig$resid,main="ACF of Residuals",lag.max=100)
 ```
+
 
 ## Model Choice
 
 The MLE estimates for forecasting had better ASE and better rolling window RMSE for all three forecasts (1 yr, 3 yr, and 5 yr)
 
-Our final Signal Plus Noise Model is Xt = 10.871 + .011t + zt, where (1 - .716B - .367B2 - 0.137B3 + 0.062B4 + .076B5 + .118B5)Zt with sigma2 = 0.0006929526
+Our final Signal Plus Noise Model is Xt = 10.871 + .011t + zt, where (1 - .716B - .367B2 - 0.137B3 + 0.062B4 + .076B5 + .118B6)Zt with sigma2 = 0.0006929526
 
 Wording: 
 
@@ -991,6 +1023,9 @@ fit.mle.sig_h4_ahead$f[4]
 fit.mle.sig_h20_ahead$ll[20]
 fit.mle.sig_h20_ahead$ul[20]
 fit.mle.sig_h20_ahead$f[20]
+
+# Residuals
+
 ```
 
 # Multi-variate Models
@@ -1011,6 +1046,7 @@ l = ccf(x$Median_Sales_Price,x$Housing_Units_Completed,lag.max=80)
 which.max(l$acf)
 l$acf[150] # 0.263895
 l$lag[150] # 69, 21 seemed alright
+ccf(x$Median_Sales_Price,x$Supply_New_Houses,main="Median Sales Price & Supply of New Houses")
 l = ccf(x$Median_Sales_Price,x$Supply_New_Houses,lag.max=60)
 which.min(l$acf)
 l$acf[70] # -0.2592145
@@ -1079,6 +1115,17 @@ plot(seq(1,l,1),x.long$Median_Sales_Price,type="b")
 points(seq((l-h.long+1),l,1),preds$pred,type="b",pch=15,col="blue")
 ```
 
+```{r MLR Plots for PPT}
+fit=arima(x.short$Median_Sales_Price[t.train.short],order=c(2,0,0),xreg=cbind(t.train.short,x.short$Housing_Units_Completed_l21[t.train.short],x.short$Supply_New_Houses_l9[t.train.short],x.short$Housing_Price_Index[t.train.short]))
+preds = predict(fit,newxreg = data.frame(t=t.test.short,Housing_Units_Completed_l21=x.short$Housing_Units_Completed_l21[t.test.short],Supply_New_Houses_l9=x.short$Supply_New_Houses_l9[t.test.short],Housing_Price_Index=x.short$Housing_Price_Index[t.test.short]))
+plot(seq(xmin_plot,l,1),x.short$Median_Sales_Price[xmin_plot:l],type="l",col="black",xlab="Time",ylab="log Median Housing Sales Price",main="MLR Short Term Forecast",ylim=c(ymin_plot,ymax_plot))
+lines(seq((l-h.short+1),l,1),preds$pred,col="red")
+fit=arima(x.long$Median_Sales_Price[t.train.long],order=c(2,0,0),xreg=cbind(t.train.long,x$Housing_Units_Completed_l21[t.train.long],x$Supply_New_Houses_l9[t.train.long],x$Housing_Price_Index[t.train.long]))
+preds = predict(fit,newxreg = data.frame(t=t.test.short,Housing_Units_Completed_l21=x.long$Housing_Units_Completed_l21[t.test.long],Supply_New_Houses_l9=x.long$Supply_New_Houses_l9[t.test.long],Housing_Price_Index=x.long$Housing_Price_Index[t.test.long]))
+plot(seq(xmin_plot,l,1),x.long$Median_Sales_Price[xmin_plot:l],type="l",col="black",xlab="Time",ylab="log Median Housing Sales Price",main="MLR Long Term Forecast",ylim=c(ymin_plot,ymax_plot))
+lines(seq((l-h.long+1),l,1),preds$pred,col="red")
+```
+
 The short term ASE is 589 M and the long term ASE is 1.4 B.
 
 ## VAR Model
@@ -1108,6 +1155,22 @@ points(seq(l-h.long+1,l,1),preds$fcst$Median_Sales_Price[1:h.long,1],type="b",pc
 fanchart(preds)
 ```
 
+```{r VAR PPT Plots}
+x = fed_housing_data
+x$Year_Quarter = c()
+fit = VAR(x,p=4,type='both') 
+preds=predict(fit,n.ahead=h.short)
+plot(seq(xmin_plot,l,1),x$Median_Sales_Price[xmin_plot:l],type="l",col="black",xlab="Time",ylab="log Median Housing Sales Price",main="VAR Short Term Forecast",ylim=c(ymin_plot,ymax_plot))
+lines(seq((l-h.short+1),l,1),preds$fcst$Median_Sales_Price[,1],col="red")
+lines(seq((l-h.short+1),l,1),preds$fcst$Median_Sales_Price[,2],col="blue",lty=3) # 2nd column is lower bound
+lines(seq((l-h.short+1),l,1),preds$fcst$Median_Sales_Price[,3],col="blue",lty=3) # 3rd column is upper bound
+preds=predict(fit,n.ahead=h.long)
+plot(seq(xmin_plot,l,1),x$Median_Sales_Price[xmin_plot:l],type="l",col="black",xlab="Time",ylab="log Median Housing Sales Price",main="VAR Long Term Forecast",ylim=c(ymin_plot,ymax_plot))
+lines(seq((l-h.long+1),l,1),preds$fcst$Median_Sales_Price[,1],col="red")
+lines(seq((l-h.long+1),l,1),preds$fcst$Median_Sales_Price[,2],col="blue",lty=3)
+lines(seq((l-h.long+1),l,1),preds$fcst$Median_Sales_Price[,3],col="blue",lty=3)
+```
+
 The VAR model has a very small short term ASE of 46.4 M.  This is even smaller than the signal plus noise model.  However, its long term ASE is larger than the MLR model.
 
 # Neural Networks
@@ -1128,6 +1191,7 @@ msp.178 = ts(log.mhp[1:178])
 
 # 1 Year Horizons
 mspFit.4 = mlp(msp.194, comb = 'median')
+plot(mspFit.4)
 mspFit.d0.4 = mlp(msp.194, comb = 'median', difforder = 0)
 mspFit.d1.4 = mlp(msp.194, comb = 'median', difforder = 1)
 mspFit.d2.4 = mlp(msp.194, comb = 'median', difforder = 2)
@@ -1167,6 +1231,7 @@ mspFit.d1.20 = mlp(msp.178, comb = 'median', difforder = 1)
 mspFit.d2.20 = mlp(msp.178, comb = 'median', difforder = 2)
 
 f.20 = forecast(mspFit.20, h = 20)
+plot(f.20)
 f.d0.20 = forecast(mspFit.d0.20, h = 20)
 f.d1.20 = forecast(mspFit.d1.20, h = 20)
 f.d2.20 = forecast(mspFit.d2.20, h = 20)
@@ -1403,6 +1468,7 @@ plot(seq(150,198,1),log.mhp[150:198], type = 'l', main = 'Univariate MLP Long Te
 lines(seq(179,198,1),percentiles_per_column[,1], lty = 3, col = "blue")
 lines(seq(179,198,1),percentiles_per_column[,2], lty = 3, col = "blue")
 lines(seq(179,198,1),xtNewForBS, col = "red")
+
 
 
 ```
@@ -2110,3 +2176,311 @@ ase <- read.csv(file_path, header = TRUE)
 ase
 ```
 
+```{r LSTM PPT Plots}
+x = fed_housing_data$Median_Sales_Price
+file_path = "https://raw.githubusercontent.com/aabromowitz/TimeSeriersProject/refs/heads/main/LSTM_predictions_short_term.csv"
+pred <- read.csv(file_path, header = TRUE)
+plot(seq(xmin_plot,l,1),x[xmin_plot:l],type="l",col="black",xlab="Time",ylab="log Median Housing Sales Price",main="LSTM Short Term Forecast",ylim=c(ymin_plot,ymax_plot))
+lines(seq((l-h.short+1),l,1),pred$Prediction,col="red")
+file_path = "https://raw.githubusercontent.com/aabromowitz/TimeSeriersProject/refs/heads/main/LSTM_predictions_long_term.csv"
+pred <- read.csv(file_path, header = TRUE)
+plot(seq(xmin_plot,l,1),x[xmin_plot:l],type="l",col="black",xlab="Time",ylab="log Median Housing Sales Price",main="LSTM Long Term Forecast",ylim=c(ymin_plot,ymax_plot))
+lines(seq((l-h.long+1),l,1),pred$Prediction,col="red")
+```
+
+## TFT
+
+TFT (Temporal Fusion Transformer) is an algorithm that uses Transformers and Attention to forecast Time Series data.  The model is known for being able to do very well with non-linear data, when it has tens of thousands or even hundreds of thousands of training examples.  We have less than 1000, so it is unlikely to do well on this dataset.
+
+The TFT was created in Python.  The code is below.
+
+```{python TFT python code, eval=FALSE}
+# https://unit8co.github.io/darts/generated_api/darts.models.forecasting.tft_model.html#darts.models.forecasting.tft_model.TFTModel
+
+# from darts.datasets import WeatherDataset
+from darts.models import TFTModel
+from darts import TimeSeries
+from darts.explainability.tft_explainer import TFTExplainer
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+
+
+# series = WeatherDataset().load()
+series = pd.read_csv('https://raw.githubusercontent.com/aabromowitz/TimeSeriersProject/refs/heads/main/fed_housing_data.csv')
+
+# Convert 'Year_Quarter' to datetime
+# import pdb
+# pdb.set_trace()
+# series['Year_Quarter'] = pd.to_datetime(series['Year_Quarter'], format='%Y-Q%q')  # Adjust format as needed
+series['Year_Quarter'] = pd.to_datetime(series['Year_Quarter'])
+
+# Convert pandas Series/DataFrames to Darts TimeSeries
+# Assuming 'Year_Quarter' is your time index
+# First set the index to Year_Quarter
+series = series.set_index('Year_Quarter')
+
+# predicting atmospheric pressure
+# target = series['p (mbar)'][:100]
+h_short = 4
+h_long = 20
+# import pdb
+# pdb.set_trace()
+target = TimeSeries.from_dataframe(series[['Median_Sales_Price']][:-h_short])  # All data except last h_short entries
+
+# optionally, past observed rainfall (pretending to be unknown beyond index 100)
+# import pdb
+# pdb.set_trace()
+past_cov = TimeSeries.from_dataframe(series[['Ownership_Rate','Housing_Units_Completed','Supply_New_Houses','Housing_Price_Index']][:-h_short])
+
+# future temperatures (pretending this component is a forecast)
+# future_cov = series['T (degC)'][:106]
+
+# by default, TFTModel is trained using a `QuantileRegression` making it a probabilistic forecasting model
+# input_chunk_length = 12
+input_chunk_length = 8
+# n_epochs = 5
+# n_epochs = 200
+n_epochs = 20
+random_state = 42
+model = TFTModel(
+    # input_chunk_length=8,
+    input_chunk_length=input_chunk_length,
+    output_chunk_length=h_short,
+    hidden_size=128,              # Larger hidden size for more capacity
+    lstm_layers=2,                # More LSTM layers
+    num_attention_heads=4,        # More attention heads
+    dropout=0.1,                  # Some dropout for regularization
+    batch_size=16,                # Smaller batch size since we have limited data
+    n_epochs=n_epochs,
+    # learning_rate=0.001,          # Standard learning rate, ValueError: Invalid model creation parameters. Model `TFTModel` has no args/kwargs `['learning_rate']`
+    random_state=random_state
+)
+
+# future_covariates are mandatory for `TFTModel`
+# import pdb
+# pdb.set_trace()
+# future_cov = TimeSeries.from_dataframe(series[['Year_Quarter']])
+# future_cov = TimeSeries.from_dataframe(series.iloc[:, 0])
+future_cov = TimeSeries.from_dataframe(series.iloc[:, [0]])
+model.fit(target, past_covariates=past_cov, future_covariates=future_cov)
+
+# TFTModel is probabilistic by definition; using `num_samples >> 1` to generate probabilistic forecasts
+# pred = model.predict(h_short, num_samples=1000)
+
+# Get mean prediction
+# mean_pred = pred.mean()
+
+# Get quantiles if you want confidence intervals
+# quantiles_pred = pred.quantile([0.025, 0.975])  # 95% confidence interval
+# import pdb
+# pdb.set_trace()
+# quantiles_pred = pred.quantile([0.025, 0.975])  # 95% confidence interval
+# quantiles_pred_1 = pred.quantile(0.025)
+# quantiles_pred_2 = pred.quantile(0.975)
+
+def evaluate_model(model, h):
+    """
+    Evaluate the TFT model using multiple metrics
+    """
+    # Make predictions
+    # predictions = model.predict(n=h_short, num_samples=100)
+    predictions = model.predict(n=h, num_samples=1000)
+    mean_predictions = predictions.mean()
+
+    # Get confidence intervals
+    # confidence_intervals = predictions.quantiles([0.025, 0.975])
+    lower_bound = predictions.quantile(0.025)  # 2.5th percentile
+    upper_bound = predictions.quantile(0.975)  # 97.5th percentile
+    
+    # Get actual values (last h_short values)
+    # actuals = target[-h_short:]
+    actuals = TimeSeries.from_dataframe(series[['Median_Sales_Price']][-h:])
+    
+    # Convert to numpy arrays for calculations
+    pred_values = mean_predictions.values()
+    actual_values = actuals.values()
+    lower_values = lower_bound.values()
+    upper_values = upper_bound.values()
+    
+    # Calculate metrics
+    total_se = 0
+    n = len(pred_values)
+    predictions_list = []
+    actuals_list = []
+    lower_bounds_list = []
+    upper_bounds_list = []
+    
+    for i in range(n):
+        pred = pred_values[i][0]  # Assuming single-variable predictions
+        actual = actual_values[i][0]
+        lower = lower_values[i][0]
+        upper = upper_values[i][0]
+        
+        # Store predictions and actuals
+        predictions_list.append(pred)
+        actuals_list.append(actual)
+        lower_bounds_list.append(lower)
+        upper_bounds_list.append(upper)
+
+        # Then un-log transform
+        pred = np.exp(pred)
+        actual = np.exp(actual)
+        
+        # Calculate squared error
+        se = (pred - actual) ** 2
+        total_se += se
+    
+    # Calculate average squared error
+    ase = total_se / 1e6 /n if n > 0 else 0
+    
+    return predictions_list, actuals_list, lower_bounds_list, upper_bounds_list, ase
+
+# Use the evaluation function
+preds, acts, lower_bounds, upper_bounds, ase = evaluate_model(model, h_short)
+
+# Print results
+print(f"Average Squared Error for short term prediction: {ase:,.2f}")
+print("\nPredictions vs Actuals with 95% Confidence Intervals:")
+for i, (p, a, l, u) in enumerate(zip(preds, acts, lower_bounds, upper_bounds)):
+    print(f"Period {i+1}:")
+    print(f"  Predicted = {p:,.2f} [{l:,.2f}, {u:,.2f}]")
+    print(f"  Actual    = {a:,.2f}")
+    print(f"  Diff      = {abs(p-a):,.2f}")
+    print(f"  Width CI  = {u-l:,.2f}")
+
+# Optional: Calculate additional metrics
+# mape_score = mape(target[-h_short:], model.predict(n=h_short).mean())
+# print(f"\nMAPE: {mape_score:.2%}")
+
+# After training the model
+# static_covariates = None  # If you have any static covariates, include them here
+
+def save_detailed_results(preds, acts, lower_bounds, upper_bounds, ase, model_name="short_term"):
+    # Predictions DataFrame
+    results_df = pd.DataFrame({
+        'Predicted': preds,
+        'Actual': acts,
+        'Lower_Bound': lower_bounds,
+        'Upper_Bound': upper_bounds,
+        'Absolute_Error': np.abs(np.array(preds) - np.array(acts)),
+        'Squared_Error': (np.array(preds) - np.array(acts))**2,
+        'CI_Width': np.array(upper_bounds) - np.array(lower_bounds),
+        'Within_CI': (np.array(acts) >= np.array(lower_bounds)) & 
+                    (np.array(acts) <= np.array(upper_bounds))
+    })
+    
+    # Calculate summary metrics
+    metrics_df = pd.DataFrame({
+        'Metric': ['ASE', 'MAE', 'RMSE', 'Mean_CI_Width', 'Coverage_Rate'],
+        'Value': [
+            ase,
+            np.mean(np.abs(np.array(preds) - np.array(acts))),
+            np.sqrt(np.mean((np.array(preds) - np.array(acts))**2)),
+            np.mean(np.array(upper_bounds) - np.array(lower_bounds)),
+            np.mean((np.array(acts) >= np.array(lower_bounds)) & 
+                   (np.array(acts) <= np.array(upper_bounds)))
+        ]
+    })
+    
+    # Save both files
+    results_df.to_csv(f'predictions_detailed_{model_name}.csv', index=True)
+    metrics_df.to_csv(f'metrics_detailed_{model_name}.csv', index=False)
+    
+    print(f"Detailed results saved to predictions_detailed_{model_name}.csv and metrics_detailed_{model_name}.csv")
+
+save_detailed_results(preds, acts, lower_bounds, upper_bounds, ase, model_name="TFT_short_term")
+
+# Get interpretability components
+# interpretability = model.interpret_output(
+# import pdb
+# pdb.set_trace()
+# interpretability = model.interpret(target,past_covariates=past_cov,future_covariates=future_cov,static_covariates=static_covariates)
+explainer = TFTExplainer(model)
+results = explainer.explain()
+
+# Save the variable selection plot
+# plt.figure(figsize=(12, 8))
+explainer.plot_variable_selection(results)
+# plt.savefig('variable_importance_short.png')  # Save to file
+# plt.close()  # Close the plot to free memory
+
+# Try with long term predictions as well
+# import pdb
+# pdb.set_trace()
+target = TimeSeries.from_dataframe(series[['Median_Sales_Price']][:-h_long])
+past_cov = TimeSeries.from_dataframe(series[['Ownership_Rate','Housing_Units_Completed','Supply_New_Houses','Housing_Price_Index']][:-h_long])
+model = TFTModel(
+    # input_chunk_length=8,
+    input_chunk_length=input_chunk_length,
+    output_chunk_length=h_long,
+    hidden_size=128,              # Larger hidden size for more capacity
+    lstm_layers=2,                # More LSTM layers
+    num_attention_heads=4,        # More attention heads
+    dropout=0.1,                  # Some dropout for regularization
+    batch_size=16,                # Smaller batch size since we have limited data
+    n_epochs=n_epochs,
+    # learning_rate=0.001,        # Standard learning rate, ValueError: Invalid model creation parameters. Model `TFTModel` has no args/kwargs `['learning_rate']`
+    random_state=random_state
+)
+model.fit(target, past_covariates=past_cov, future_covariates=future_cov)
+preds, acts, lower_bounds, upper_bounds, ase = evaluate_model(model, h_long)
+print(f"Average Squared Error for long term prediction: {ase:,.2f}")
+print("\nPredictions vs Actuals with 95% Confidence Intervals:")
+for i, (p, a, l, u) in enumerate(zip(preds, acts, lower_bounds, upper_bounds)):
+    print(f"Period {i+1}:")
+    print(f"  Predicted = {p:,.2f} [{l:,.2f}, {u:,.2f}]")
+    print(f"  Actual    = {a:,.2f}")
+    print(f"  Diff      = {abs(p-a):,.2f}")
+    print(f"  Width CI  = {u-l:,.2f}")
+save_detailed_results(preds, acts, lower_bounds, upper_bounds, ase, model_name="TFT_long_term")
+explainer = TFTExplainer(model)
+results = explainer.explain()
+explainer.plot_variable_selection(results)
+```
+
+The short term prediction was the following:
+
+```{r TFT short term predictions}
+file_path = "https://raw.githubusercontent.com/aabromowitz/TimeSeriersProject/refs/heads/main/predictions_detailed_TFT_short_term.csv"
+pred <- read.csv(file_path, header = TRUE)
+pred
+h.short = 4
+x = fed_housing_data$Median_Sales_Price
+l = length(x)
+plot(seq(1,l,1),x,type="b")
+points(seq(l-h.short+1,l,1),pred$Predicted,type="b",pch=15,col="blue")
+lines(seq(l-h.short+1,l,1),pred$Lower_Bound,lty=2, col="red", lwd=2)
+lines(seq(l-h.short+1,l,1),pred$Upper_Bound,lty=2, col="red", lwd=2)
+```
+
+The short term ASE was 11.5 B.  This was significantly worse than other models.  The poor results aren't unexpected though, as there were so few data points to train on.
+
+```{r TFT short term ASE}
+file_path = "https://raw.githubusercontent.com/aabromowitz/TimeSeriersProject/refs/heads/main/metrics_detailed_TFT_short_term.csv"
+metrics <- read.csv(file_path, header = TRUE)
+metrics # 1146
+```
+
+The long term prediction was the following:
+
+```{r TFT long term predictions}
+file_path = "https://raw.githubusercontent.com/aabromowitz/TimeSeriersProject/refs/heads/main/predictions_detailed_TFT_long_term.csv"
+pred <- read.csv(file_path, header = TRUE)
+pred
+h.long=20
+x = fed_housing_data$Median_Sales_Price
+l = length(x)
+plot(seq(1,l,1),x,type="b")
+points(seq(l-h.long+1,l,1),pred$Predicted,type="b",pch=15,col="blue")
+lines(seq(l-h.long+1,l,1),pred$Lower_Bound,lty=2, col="red", lwd=2)
+lines(seq(l-h.long+1,l,1),pred$Upper_Bound,lty=2, col="red", lwd=2)
+```
+
+The long term ASE was 15.0 B.  Similar to the short term predictions, this model did very poorly compared to the other models.
+
+```{r TFT long term ASE}
+file_path = "https://raw.githubusercontent.com/aabromowitz/TimeSeriersProject/refs/heads/main/metrics_detailed_TFT_long_term.csv"
+metrics <- read.csv(file_path, header = TRUE)
+metrics # 1146
+```
