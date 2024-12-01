@@ -107,6 +107,7 @@ summary(fed_housing_data)
 xmin_plot = 150
 ymin_plot = 12.3
 ymax_plot = 13.1
+ymax_future = 13.2
 ```
 
 # EDA
@@ -415,6 +416,28 @@ for( i in 1: sims)
 ```
 
 The ACFs don't match up exactly, but have the same slowly dampening behavior.  The Parzen Windows are very close to the original.
+
+We will look at the short and long term forecasts of future data as well.
+
+```{r ARIMA(1,1,2) future forecasts}
+h.short = 4
+h.long = 20
+x = fed_housing_data$Median_Sales_Price
+l = length(x)
+d = artrans.wge(x,1)
+dev.off()
+est = est.arma.wge(d,p=1,q=2)
+f = fore.arima.wge(x,d=1,phi=est$phi,theta=est$theta,n.ahead=h.short,lastn=FALSE,plot=FALSE)
+plot(seq(xmin_plot,l+h.short,1),x[xmin_plot:(l+h.short)],type="l",col="black",xlab="Time",ylab="log Median Housing Sales Price",main="ARIMA(1,1,2) Short Term Forecast",ylim=c(ymin_plot,ymax_future))
+lines(seq((l+1),(l+h.short),1),f$f,col="red")
+lines(seq((l+1),(l+h.short),1),f$ll,col="blue",lty=3) # lty=3 for dotted line
+lines(seq((l+1),(l+h.short),1),f$ul,col="blue",lty=3)
+f = fore.arima.wge(x,d=1,phi=est$phi,theta=est$theta,n.ahead=h.long,lastn=FALSE,plot=FALSE)
+plot(seq(xmin_plot,l+h.long,1),x[xmin_plot:(l+h.long)],type="l",col="black",xlab="Time",ylab="log Median Housing Sales Price",main="ARIMA(1,1,2) Long Term Forecast",ylim=c(ymin_plot,ymax_future))
+lines(seq((l+1),(l+h.long),1),f$f,col="red")
+lines(seq((l+1),(l+h.long),1),f$ll,col="blue",lty=3) # lty=3 for dotted line
+lines(seq((l+1),(l+h.long),1),f$ul,col="blue",lty=3)
+```
 
 # Exogenous Variable Forecasts
 
@@ -1124,6 +1147,40 @@ fit=arima(x.long$Median_Sales_Price[t.train.long],order=c(2,0,0),xreg=cbind(t.tr
 preds = predict(fit,newxreg = data.frame(t=t.test.short,Housing_Units_Completed_l21=x.long$Housing_Units_Completed_l21[t.test.long],Supply_New_Houses_l9=x.long$Supply_New_Houses_l9[t.test.long],Housing_Price_Index=x.long$Housing_Price_Index[t.test.long]))
 plot(seq(xmin_plot,l,1),x.long$Median_Sales_Price[xmin_plot:l],type="l",col="black",xlab="Time",ylab="log Median Housing Sales Price",main="MLR Long Term Forecast",ylim=c(ymin_plot,ymax_plot))
 lines(seq((l-h.long+1),l,1),preds$pred,col="red")
+```
+
+```{r MLR future forecasts of exogenous variables}
+
+
+f = fore.arima.wge(x,d=1,phi=est$phi,theta=est$theta,n.ahead=h.short,lastn=FALSE,plot=FALSE)
+fit=arima(x.short$Median_Sales_Price[t.train.short],order=c(2,0,0),xreg=cbind(t.train.short,x.short$Housing_Units_Completed_l21[t.train.short],x.short$Supply_New_Houses_l9[t.train.short],x.short$Housing_Price_Index[t.train.short]))
+preds = predict(fit,newxreg = data.frame(t=t.test.short,Housing_Units_Completed_l21=x.short$Housing_Units_Completed_l21[t.test.short],Supply_New_Houses_l9=x.short$Supply_New_Houses_l9[t.test.short],Housing_Price_Index=x.short$Housing_Price_Index[t.test.short]))
+plot(seq(xmin_plot,l+h.short,1),x[xmin_plot:(l+h.short)],type="l",col="black",xlab="Time",ylab="log Median Housing Sales Price",main="ARIMA(1,1,2) Short Term Forecast",ylim=c(ymin_plot,ymax_future))
+lines(seq((l+1),(l+h.short),1),f$f,col="red")
+lines(seq((l+1),(l+h.short),1),f$ll,col="blue",lty=3) # lty=3 for dotted line
+lines(seq((l+1),(l+h.short),1),f$ul,col="blue",lty=3)
+f = fore.arima.wge(x,d=1,phi=est$phi,theta=est$theta,n.ahead=h.long,lastn=FALSE,plot=FALSE)
+plot(seq(xmin_plot,l+h.long,1),x[xmin_plot:(l+h.long)],type="l",col="black",xlab="Time",ylab="log Median Housing Sales Price",main="ARIMA(1,1,2) Long Term Forecast",ylim=c(ymin_plot,ymax_future))
+lines(seq((l+1),(l+h.long),1),f$f,col="red")
+lines(seq((l+1),(l+h.long),1),f$ll,col="blue",lty=3) # lty=3 for dotted line
+lines(seq((l+1),(l+h.long),1),f$ul,col="blue",lty=3)
+```
+
+```{r MLR future forecasts}
+
+
+f = fore.arima.wge(x,d=1,phi=est$phi,theta=est$theta,n.ahead=h.short,lastn=FALSE,plot=FALSE)
+fit=arima(x.short$Median_Sales_Price[t.train.short],order=c(2,0,0),xreg=cbind(t.train.short,x.short$Housing_Units_Completed_l21[t.train.short],x.short$Supply_New_Houses_l9[t.train.short],x.short$Housing_Price_Index[t.train.short]))
+preds = predict(fit,newxreg = data.frame(t=t.test.short,Housing_Units_Completed_l21=x.short$Housing_Units_Completed_l21[t.test.short],Supply_New_Houses_l9=x.short$Supply_New_Houses_l9[t.test.short],Housing_Price_Index=x.short$Housing_Price_Index[t.test.short]))
+plot(seq(xmin_plot,l+h.short,1),x[xmin_plot:(l+h.short)],type="l",col="black",xlab="Time",ylab="log Median Housing Sales Price",main="ARIMA(1,1,2) Short Term Forecast",ylim=c(ymin_plot,ymax_future))
+lines(seq((l+1),(l+h.short),1),f$f,col="red")
+lines(seq((l+1),(l+h.short),1),f$ll,col="blue",lty=3) # lty=3 for dotted line
+lines(seq((l+1),(l+h.short),1),f$ul,col="blue",lty=3)
+f = fore.arima.wge(x,d=1,phi=est$phi,theta=est$theta,n.ahead=h.long,lastn=FALSE,plot=FALSE)
+plot(seq(xmin_plot,l+h.long,1),x[xmin_plot:(l+h.long)],type="l",col="black",xlab="Time",ylab="log Median Housing Sales Price",main="ARIMA(1,1,2) Long Term Forecast",ylim=c(ymin_plot,ymax_future))
+lines(seq((l+1),(l+h.long),1),f$f,col="red")
+lines(seq((l+1),(l+h.long),1),f$ll,col="blue",lty=3) # lty=3 for dotted line
+lines(seq((l+1),(l+h.long),1),f$ul,col="blue",lty=3)
 ```
 
 The short term ASE is 589 M and the long term ASE is 1.4 B.
