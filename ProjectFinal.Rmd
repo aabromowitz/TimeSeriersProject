@@ -18,6 +18,7 @@ library(vars)
 library(lubridate)
 library(vars)
 library(nnfor)
+library(caret)
 ```
 
 # Load Data
@@ -313,7 +314,17 @@ r$rwRMSE
 
 For the ARIMA(1,2,1) model we get a short term Rolling Window RMSE of 0.049, a long term Rolling Window RMSE of 0.181, a short term ASE of 162.4 million and a long term ASE of 6.26 billion.  Even though this model had the best long term ASE so far, it did worse in the other metrics.
 
-Comparing all three ARMA/ARIMA models, we will choose the ARIMA(1,1,2).  
+Comparing all three ARMA/ARIMA models, we will choose the ARIMA(1,1,2).  Here are what the short and long term forecasts look like zoomed in.
+
+```{r ARIMA(1,1,2) plots for PPT}
+h.short = 4
+h.long = 20
+f = fore.arima.wge(x,d=1,phi=est$phi,theta=est$theta,n.ahead=h.long,lastn=TRUE,p 
+plot(seq(150,l,1),x[150:l],type="l",col="black",xlab="Time",ylab="log Median Housing Sales Price",main="ARIMA(1,1,2) Long Term Forecast",ylim=c(min(min(x[150:l]),min(f$ll)),max(max(f$ul),max(x))))
+lines(seq((l-h.long+1),l,1),f$f,col="red")
+lines(seq((l-h.long+1),l,1),f$ll,col="blue")
+lines(seq((l-h.long+1),l,1),f$ul,col="blue")
+```
 
 ```{r ARIMA(1,1,2) model characteristics}
 est = est.arma.wge(d.log.mhp,p=1,q=2)
