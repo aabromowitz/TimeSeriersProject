@@ -316,7 +316,7 @@ For the ARIMA(1,2,1) model we get a short term Rolling Window RMSE of 0.049, a l
 
 Comparing all three ARMA/ARIMA models, we will choose the ARIMA(1,1,2). Here are what the short and long term forecasts look like zoomed in.
 
-```{r ARIMA(p,1,q) metrics}
+```{r ARIMA(1,1,2) plots for PPT}
 h.short = 4
 h.long = 20
 x = fed_housing_data$Median_Sales_Price
