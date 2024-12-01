@@ -319,7 +319,17 @@ Comparing all three ARMA/ARIMA models, we will choose the ARIMA(1,1,2).  Here ar
 ```{r ARIMA(1,1,2) plots for PPT}
 h.short = 4
 h.long = 20
-f = fore.arima.wge(x,d=1,phi=est$phi,theta=est$theta,n.ahead=h.long,lastn=TRUE,p 
+x = fed_housing_data$Median_Sales_Price
+l = length(x)
+d = artrans.wge(x,1)
+dev.off()
+est = est.arma.wge(d,p=1,q=2)
+f = fore.arima.wge(x,d=1,phi=est$phi,theta=est$theta,n.ahead=h.short,lastn=TRUE,plot=FALSE)
+plot(seq(150,l,1),x[150:l],type="l",col="black",xlab="Time",ylab="log Median Housing Sales Price",main="ARIMA(1,1,2) Short Term Forecast",ylim=c(min(min(x[150:l]),min(f$ll)),max(max(f$ul),max(x))))
+lines(seq((l-h.short+1),l,1),f$f,col="red")
+lines(seq((l-h.short+1),l,1),f$ll,col="blue")
+lines(seq((l-h.short+1),l,1),f$ul,col="blue")
+f = fore.arima.wge(x,d=1,phi=est$phi,theta=est$theta,n.ahead=h.long,lastn=TRUE,plot=FALSE)
 plot(seq(150,l,1),x[150:l],type="l",col="black",xlab="Time",ylab="log Median Housing Sales Price",main="ARIMA(1,1,2) Long Term Forecast",ylim=c(min(min(x[150:l]),min(f$ll)),max(max(f$ul),max(x))))
 lines(seq((l-h.long+1),l,1),f$f,col="red")
 lines(seq((l-h.long+1),l,1),f$ll,col="blue")
