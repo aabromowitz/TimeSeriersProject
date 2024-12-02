@@ -113,6 +113,7 @@ msp.178 = ts(log.mhp[1:178])
 # 5 Year Horizon
 mspFit.20 = mlp(msp.178, comb = 'median')
 f.20 = forecast(mspFit.20, h = 20)
+plot(mspFit.20)
 
 # Metrics
 ASE.mlp.exp.h20 = mean((exp(log.mhp[179:198]) - exp(f.20$mean))^2) # 1.72B
@@ -163,6 +164,9 @@ future.f.4 = forecast(future.mspFit.4, h = 4)
 future.mspFit.20 = mlp(log.mhp, comb = 'median')
 future.f.20 = forecast(future.mspFit.20, h = 20)
 
+future.f.4$mean[4] # 12.96544 ($427,384.77)
+future.f.20$mean[20] # 13.10206 ($489,950.67)
+
 h.short = 4
 h.long = 20
 x = fed_housing_data$Median_Sales_Price
@@ -195,6 +199,13 @@ fit.mle.sig_h4_ahead = fore.sigplusnoise.wge(log.mhp, linear = TRUE, method = 'm
 # Fit with MLE estimates, using all data, forecasting ahead 5 years
 fit.mle.sig_h20_ahead = fore.sigplusnoise.wge(log.mhp, linear = TRUE, method = 'mle', freq = 0, max.p = 6, n.ahead = 20, lastn = FALSE)
 
+fit.mle.sig_h4_ahead$f[4] # 12.96253 ($426,142.89)
+fit.mle.sig_h4_ahead$ll[4] # 12.86814 ($387,759.27)
+fit.mle.sig_h4_ahead$ul[4] # 13.05691 ($468,321.36)
+fit.mle.sig_h20_ahead$f[20] # 13.18 ($529,665.00)
+fit.mle.sig_h20_ahead$ll[20] # 12.94574 ($419,047.69)
+fit.mle.sig_h20_ahead$ul[20] # 13.41426 ($669,482.30)
+
 # Forecasting next year (Zoomed In)
 plot(seq(xmin_plot,l+h.short,1),x[xmin_plot:(l+h.short)],type="l",col="black",
      xlab="Time", ylab = "log Median Housing Sales Price",
@@ -212,3 +223,5 @@ lines(seq((l+1),(l+h.long),1),fit.mle.sig_h20_ahead$ll,col="blue",lty=3) # lty=3
 lines(seq((l+1),(l+h.long),1),fit.mle.sig_h20_ahead$ul,col="blue",lty=3)
 
 ```
+
+ALSO CHANGE LINE 1394 seq match
