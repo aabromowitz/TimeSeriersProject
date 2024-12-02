@@ -1339,6 +1339,7 @@ lines(seq(1,4), f.d2.4$mean, col = "green")
 
 # 5 Year Horizon
 mspFit.20 = mlp(msp.178, comb = 'median')
+plot(mspFit.20)
 mspFit.d0.20 = mlp(msp.178, comb = 'median', difforder = 0)
 mspFit.d1.20 = mlp(msp.178, comb = 'median', difforder = 1)
 mspFit.d2.20 = mlp(msp.178, comb = 'median', difforder = 2)
@@ -2757,82 +2758,105 @@ RMSE.ensemble.20
 The long term plots for MLR seemed to be too low, and the long term plots for SPN seemed to be too high.  So we thought that combining them could improve the long term predictions.
 
 ```{r Ensemble Model MLR + SPN}
+# MLR forecasts
+x = fed_housing_data
+x.short = fed_housing_data_short
+x.long = fed_housing_data_long
+x$Year_Quarter = c()
+x.short$Year_Quarter = c()
+x.long$Year_Quarter = c()
+l = length(x$Median_Sales_Price)
+t=1:l
+t.train.short= 1:(l-h.short)
+t.test.short=(l-h.short+1):l
+t.train.long= 1:(l-h.long)
+t.test.long=(l-h.long+1):l
+x$Housing_Units_Completed_l21 = dplyr::lag(x$Housing_Units_Completed,21)
+x$Supply_New_Houses_l9 = dplyr::lag(x$Supply_New_Houses,9)
+x.short$Housing_Units_Completed_l21 = dplyr::lag(x.short$Housing_Units_Completed,21)
+x.short$Supply_New_Houses_l9 = dplyr::lag(x.short$Supply_New_Houses,9)
+x.long$Housing_Units_Completed_l21 = dplyr::lag(x.long$Housing_Units_Completed,21)
+x.long$Supply_New_Houses_l9 = dplyr::lag(x.long$Supply_New_Houses,9)
+fit=arima(x.short$Median_Sales_Price[t.train.short],order=c(2,0,0),xreg=cbind(t.train.short,x.short$Housing_Units_Completed_l21[t.train.short],x.short$Supply_New_Houses_l9[t.train.short],x.short$Housing_Price_Index[t.train.short]))
+preds = predict(fit,newxreg = data.frame(t=t.test.short,Housing_Units_Completed_l21=x.short$Housing_Units_Completed_l21[t.test.short],Supply_New_Houses_l9=x.short$Supply_New_Houses_l9[t.test.short],Housing_Price_Index=x.short$Housing_Price_Index[t.test.short]))
+mlr_pred_short = preds$pred
+fit=arima(x.long$Median_Sales_Price[t.train.long],order=c(2,0,0),xreg=cbind(t.train.long,x$Housing_Units_Completed_l21[t.train.long],x$Supply_New_Houses_l9[t.train.long],x$Housing_Price_Index[t.train.long]))
+preds = predict(fit,newxreg = data.frame(t=t.test.short,Housing_Units_Completed_l21=x.long$Housing_Units_Completed_l21[t.test.long],Supply_New_Houses_l9=x.long$Supply_New_Houses_l9[t.test.long],Housing_Price_Index=x.long$Housing_Price_Index[t.test.long]))
+mlr_pred_long = preds$pred
 
-
-
+# SPN forecasts
 log.mhp = fed_housing_data$Median_Sales_Price
+fit.mle.sig_h4 = fore.sigplusnoise.wge(log.mhp, linear = TRUE, method = 'mle', freq = 0, max.p = 6, n.ahead = 4, lastn = TRUE,plot=FALSE)
+spn_pred_short = fit.mle.sig_h4$f
+fit.mle.sig_h20 = fore.sigplusnoise.wge(log.mhp, linear = TRUE, method = 'mle', freq = 0, max.p = 6, n.ahead = 20, lastn = TRUE,plot=FALSE)
+spn_pred_long = fit.mle.sig_h20$f
 
-# SPN Fit with MLE estimates, using all data
-fit.mle.sig_h20 = fore.sigplusnoise.wge(log.mhp, linear = TRUE, method = 'mle', freq = 0, 
-                                        max.p = 6, n.ahead = 20, lastn = TRUE)
-
-# SPN Plot
-plot(log.mhp, type = 'l')
-lines(seq(179,198,1), fit.mle.sig_h20$f, col = "red")
-lines(seq(179,198,1), fit.mle.sig_h20$ll, lty = 3, col = "blue")
-lines(seq(179,198,1), fit.mle.sig_h20$ul, lty = 3, col = "blue")
-
-# Zoomed In
-plot(seq(150,198,1),log.mhp[150:198], type = 'l', ylim = c(12.3, 13.2), main = "Linear Signal with AR(6) Noise Long Term Forecast", 
-     xlab = "Time", ylab = "log Median Housing Sales Price")
-lines(seq(179,198,1), fit.mle.sig_h20$f, col = "red")
-lines(seq(179,198,1), fit.mle.sig_h20$ll, lty = 3, col = "blue")
-lines(seq(179,198,1), fit.mle.sig_h20$ul, lty = 3, col = "blue")
-
-# ASE with MLE estimates
-ASE.h20 = mean((log.mhp[179:198] - fit.mle.sig_h20$f)^2)
-ASEexp.h20 = mean((exp(log.mhp[179:198]) - exp(fit.mle.sig_h20$f))^2)
-ASEexp.h20 # 1.1B
-
-# MLP Model
-msp.178 = ts(log.mhp[1:178])
-
-# 5 Year Horizon
-mspFit.20 = mlp(msp.178, comb = 'median')
-f.20 = forecast(mspFit.20, h = 20)
+# Creating ensemble forecasts
+ensemble_mlr_spn_short = (mlr_pred_short + spn_pred_short)/2
+ensemble_mlr_spn_long = (mlr_pred_long + spn_pred_long)/2
 
 # Metrics
-ASE.mlp.exp.h20 = mean((exp(log.mhp[179:198]) - exp(f.20$mean))^2) # 1.72B
-rwfit.mlp20 = roll.win.rmse.nn.wge(log.mhp, horizon = 20, fit_model = mspFit.20) # 0.072
+ase = mean((fed_housing_data_NL$Median_Sales_Price[(l-h.short+1):l]-exp(ensemble_mlr_spn_short))^2)/1e6
+ase # 207.8022
+ase = mean((fed_housing_data_NL$Median_Sales_Price[(l-h.long+1):l]-exp(ensemble_mlr_spn_long))^2)/1e6
+ase # 653.9763
 
-# Forecasts
-plot(log.mhp, type = 'l', lwd = 1, main = 'MLP Univariate Long Term Forecast',
-     ylab = 'log Median Housing Sales Price', xlab = 'Time')
-points(seq(179,198), f.20$mean, type = 'l', col = 'red')
+# Plots
+plot(seq(xmin_plot,l,1),x$Median_Sales_Price[xmin_plot:l],type="l",col="black",xlab="Time",ylab="log Median Housing Sales Price", main="Ensemble Model, MLR & SPN Short Term Forecast", sub = 'The ensemble model (red) is the average of the MLR (orange) and the SPN (green) forecasts', ylim=c(ymin_plot,ymax_plot))
+lines(seq((l-h.short+1),l,1),ensemble_mlr_spn_short,col="red")
+lines(seq((l-h.short+1),l,1),mlr_pred_short,col="orange")
+lines(seq((l-h.short+1),l,1),spn_pred_short,col="green")
+plot(seq(xmin_plot,l,1),x$Median_Sales_Price[xmin_plot:l],type="l",col="black",xlab="Time",ylab="log Median Housing Sales Price", main="Ensemble Model, MLR & SPN Long Term Forecast", sub = 'The ensemble model (red) is the average of the MLR (orange) and the SPN (green) forecasts' ,ylim=c(ymin_plot,ymax_plot))
+lines(seq((l-h.long+1),l,1),ensemble_mlr_spn_long,col="red")
+lines(seq((l-h.long+1),l,1),mlr_pred_long,col="orange")
+lines(seq((l-h.long+1),l,1),spn_pred_long,col="green")
+```
 
-# Zoomed In, 5 yr
-plot(seq(150,198,1),log.mhp[150:198], type = 'l', main = 'Univariate MLP Forecast, 1 Year',
-     ylab = 'log Median Housing Sales Price', xlab = 'Time')
-points(seq(179,198,1), f.20$mean, type = 'l', col = 'red')
+This model has the best long term ASE, and the plots for the short term forecast seem reasonable.  Now we will forecast out to 1 and 5 years with this ensemble.
 
-# Ensemble Model
-ensemble.20 = (fit.mle.sig_h20$f + f.20$mean)/2
-ensemble.20
+```{r Ensemble Model MLR + SPN future forecasts}
+# SPN 
+fit.mle.sig_h4_ahead = fore.sigplusnoise.wge(log.mhp, linear = TRUE, method = 'mle', freq = 0, max.p = 6, n.ahead = 4, lastn = FALSE, plot = FALSE)
+fit.mle.sig_h20_ahead = fore.sigplusnoise.wge(log.mhp, linear = TRUE, method = 'mle', freq = 0, max.p = 6, n.ahead = 20, lastn = FALSE, plot=FALSE)
 
-# Forecast
-plot(log.mhp, type = 'l', ylim=c(10.5, 13.1),
-     main = 'Ensemble Model, SPN & MLP Long Term Forecast', xlab = 'Time', 
-     ylab = 'log Median Housing Sales Price')
-lines(seq(179,198,1),ensemble.20,col = "red")
+# MLR
+x = fed_housing_data_forecast
+x$Housing_Units_Completed_l21 = dplyr::lag(x$Housing_Units_Completed,21)
+x$Supply_New_Houses_l9 = dplyr::lag(x$Supply_New_Houses,9)
+t=1:l
+t.fore.short = (l+1):(l+h.short)
+t.fore.long = (l+1):(l+h.long)
+fit=arima(x$Median_Sales_Price[t],order=c(2,0,0),xreg=cbind(t,x$Housing_Units_Completed_l21[t],x$Supply_New_Houses_l9[t],x$Housing_Price_Index[t]))
 
-# Zoomed In
-plot(seq(150,198,1),log.mhp[150:198], type = 'l', ylim=c(12.4, 13.1),
-     main = 'Ensemble Model, SPN & MLP Long Term Forecast', 
-     xlab = 'Time', ylab = 'log Median Housing Sales Price')
-lines(seq(179,198,1),ensemble.20,col = "red")
+# Ensemble
+preds_short = predict(fit,newxreg = data.frame(t=t.fore.short,Housing_Units_Completed_l21=x$Housing_Units_Completed_l21[t.fore.short],Supply_New_Houses_l9=x$Supply_New_Houses_l9[t.fore.short],Housing_Price_Index=x$Housing_Price_Index[t.fore.short]))
+ensemble_fore_short = (fit.mle.sig_h4_ahead$f + preds_short$pred)/2
+preds_long = predict(fit,newxreg = data.frame(t=t.fore.long,Housing_Units_Completed_l21=x$Housing_Units_Completed_l21[t.fore.long],Supply_New_Houses_l9=x$Supply_New_Houses_l9[t.fore.long],Housing_Price_Index=x$Housing_Price_Index[t.fore.long]))
+ensemble_fore_long = (fit.mle.sig_h20_ahead$f + preds_long$pred)/2
+  
+# Plots
+plot(seq(xmin_plot,l+h.short,1),fed_housing_data$Median_Sales_Price[xmin_plot:(l+h.short)],type="l",col="black",xlab="Time",ylab="log Median Housing Sales Price",main="Ensemble Model, MLR & SPN Short Term Forecast", sub = 'The ensemble model (red) is the average of the MLR (orange) and the SPN (green) forecasts',ylim=c(ymin_plot,ymax_future))
+lines(seq((l+1),(l+h.short),1),ensemble_fore_short,col="red")
+lines(seq((l+1),(l+h.short),1),preds_short$pred,col="orange")
+lines(seq((l+1),(l+h.short),1),fit.mle.sig_h4_ahead$f,col="green")
+plot(seq(xmin_plot,l+h.long,1),fed_housing_data$Median_Sales_Price[xmin_plot:(l+h.long)],type="l",col="black",xlab="Time",ylab="log Median Housing Sales Price",main="Ensemble Model, MLR & SPN Long Term Forecast", sub = 'The ensemble model (red) is the average of the MLR (orange) and the SPN (green) forecasts',ylim=c(ymin_plot,ymax_future))
+lines(seq((l+1),(l+h.long),1),ensemble_fore_long,col="red")
+lines(seq((l+1),(l+h.long),1),fit.mle.sig_h20_ahead$f,col="orange")
+lines(seq((l+1),(l+h.long),1),preds_long$pred,col="green")
 
-# Zoomed in with Original Models
-plot(seq(150,198,1),log.mhp[150:198], type = 'l', ylim=c(12.4, 13.1),
-     main = 'Ensemble Model, SPN & MLP Long Term Forecast', 
-     sub = 'The ensemble model (red) takes the average of the SPN (orange) and the MLP (green) forecasts',  
-     xlab = 'Time', ylab = 'log Median Housing Sales Price')
-lines(seq(179,198,1),ensemble.20,col = "red")
-points(seq(179,198,1), f.20$mean, type = 'l', col = 'green')
-lines(seq(179,198,1), fit.mle.sig_h20$f, col = "orange")
+# Plots with actual data
+plot(seq(xmin_plot,l+h.short,1),exp(fed_housing_data$Median_Sales_Price[xmin_plot:(l+h.short)])/1e3,type="l",col="black",xlab="Time",ylab="Median Housing Sales Price (in thousands of dollars)",main="Ensemble Model, MLR & SPN Short Term Forecast", sub = 'The ensemble model (red) is the average of the MLR (orange) and the SPN (green) forecasts',ylim=c(250,650))
+lines(seq((l+1),(l+h.short),1),exp(ensemble_fore_short)/1e3,col="red")
+lines(seq((l+1),(l+h.short),1),exp(preds_short$pred)/1e3,col="orange")
+lines(seq((l+1),(l+h.short),1),exp(fit.mle.sig_h4_ahead$f)/1e3,col="green")
+plot(seq(xmin_plot,l+h.long,1),exp(fed_housing_data$Median_Sales_Price[xmin_plot:(l+h.long)])/1e3,type="l",col="black",xlab="Time",ylab="Median Housing Sales Price (in thousands of dollars)",main="Ensemble Model, MLR & SPN Long Term Forecast", sub = 'The ensemble model (red) is the average of the MLR (orange) and the SPN (green) forecasts',ylim=c(250,650))
+lines(seq((l+1),(l+h.long),1),exp(ensemble_fore_long)/1e3,col="red")
+lines(seq((l+1),(l+h.long),1),exp(fit.mle.sig_h20_ahead$f)/1e3,col="orange")
+lines(seq((l+1),(l+h.long),1),exp(preds_long$pred)/1e3,col="green")
 
-# Metrics
-ASE.ensemble.20 = mean((exp(log.mhp[179:198]) - exp(ensemble.20))^2) # 1.658B
-ASE.ensemble.20
-RMSE.ensemble.20 = sqrt(mean(log.mhp[179:198] - ensemble.20)^2) # 0.0758
-RMSE.ensemble.20
+# Plots at full timescale
+plot(seq(1,l+h.long,1),exp(fed_housing_data$Median_Sales_Price[1:(l+h.long)])/1e3,type="l",col="black",xlab="Time",ylab="Median Housing Sales Price (in thousands of dollars)",main="Ensemble Model, MLR & SPN Long Term Forecast", sub = 'The ensemble model (red) is the average of the MLR (orange) and the SPN (green) forecasts',ylim=c(0,650))
+lines(seq((l+1),(l+h.long),1),exp(ensemble_fore_long)/1e3,col="red")
+lines(seq((l+1),(l+h.long),1),exp(fit.mle.sig_h20_ahead$f)/1e3,col="orange")
+lines(seq((l+1),(l+h.long),1),exp(preds_long$pred)/1e3,col="green")
 ```
