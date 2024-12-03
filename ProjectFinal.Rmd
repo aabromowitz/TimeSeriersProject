@@ -199,6 +199,7 @@ The ACF and Parzen Window are also similar to those of Housing Sale Price.
 
 Not all the data matches up by date range or by frequency of observation (monthly vs quarterly).  To make everything consistent, we will only use quarterly data going from Q1 1975 to Q2 2024.
 
+
 # AR(I)MA Model Investigation
 
 ## First ARIMA Model
@@ -703,7 +704,7 @@ fed_housing_data_long$Housing_Price_Index[(l-h.long+1):l] = hpi.pred.long
 
 Our domain knowledge tells us that the positive trend of Median House Price is not random and does have an underlying regression line, but we can run a few tests for linear trend to be sure. We will test for linear trend using simple linear regression with a standard t-test, the Cochran Orcutt Test for Linear Trend, and the WBG Test (Woodward, Bottone, and Gray, 1997). All 3 tests have a p-value below 0.05, rejecting the null hypothesis. The residuals are not white noise yet, so we will fit an ARMA model along with the linear signal.
 
-### Test for linear Trend
+## Test for linear Trend
 
 ```{r Test for linear trend}
 # Testing for Linear Trend
@@ -744,7 +745,7 @@ points(fit, type = "l")
 aic5.ar.wge(reg$res,p=0:10)
 ```
 
-### Choosing estimates for the ARMA portion of the Signal Plus Noise Model
+## Choosing estimates for the ARMA portion of the Signal Plus Noise Model
 
 After comparing the MLE and Burg estimates on AIC, AICC, and BIC, we determined the MLE estimates were better for all three metrics. All estimates chose an AR(6), with the exception of the MLE estimate using the BIC, which chose an AR(2). We will move forward with the AR(6) model, compare the forecasts visually, and test whether the Average Square Error (ASE) is better for the MLE or the Burg estimates. The MLE estimates have better ASEs, as expected. While there isn't much difference visually between the two, the MLE lower limit (blue line) does contain the actual values, whereas the Burg lower limit (green line) are slightly more narrow and doesn't capture one of the actual values. Given the other evidence for using the MLE estimates, we will move forward with MLE estimates for an AR(6).
 
@@ -810,7 +811,7 @@ lines(seq(169,198,1), fit.b.sig$ul, col = "green")
 
 ```
 
-### Signal Plus Noise using 1 Yr Horizon
+## Signal Plus Noise using 1 Yr Horizon
 
 The 1 Year Horizon backcast (for the past year) is pretty close to the actual values, with an ASE (on the non-lagged values) around 50M. The residuals appear to be white noise when looking at both the plot and the ACF, indicating this model has explained most of the noise of the data.
 
@@ -845,7 +846,7 @@ plotts.sample.wge(fit.mle.sig_h4$resid)
 acf(fit.mle.sig_h4$resid)
 ljung.wge(fit.mle.sig_h4$resid, p = 6, q = 0, K = 48)
 ```
-### Signal Plus Noise using 5 Yr Horizon
+## Signal Plus Noise using 5 Yr Horizon
 
 The 5 Year Horizon backcast (for the past 5 years) is pretty close to the actual values, with an ASE (on the non-lagged values) around 1.1B. The residuals appear to be white noise when looking at both the plot and the ACF, indicating this model has explained most of the noise of the data.
 
@@ -880,6 +881,7 @@ plotts.sample.wge(fit.mle.sig_h20$resid)
 acf(fit.mle.sig_h20$resid)
 ljung.wge(fit.mle.sig_h20$resid, p = 6, q = 0, K = 48)
 ```
+
 ## Rolling Window RMSE for SPN
 
 To compare this model with other models, we will use code that Aaron has written to create a rolling window that measures RMSE for the model. We will use the MLE estimates for p values of 1-6 to assure ourselves that an AR(6) is the best AR model to accompany the signal. The average RMSE for all 1 year windows (4 quarters) is 0.0326, and the average RMSE for all 5 year windows (20 quarters) is 0.07595. 
@@ -1027,31 +1029,44 @@ fit.mle.sig_h4_ahead = fore.sigplusnoise.wge(log.mhp, linear = TRUE, method = 'm
 fit.mle.sig_h20_ahead = fore.sigplusnoise.wge(log.mhp, linear = TRUE, method = 'mle', freq = 0, max.p = 6, n.ahead = 20, lastn = FALSE)
 
 # Checking if models all have same intercept, slope, and phis
-fit.mle.sig_notTT$b0hat == fit.mle.sig_h4_ahead$b0hat
-fit.mle.sig_notTT$b1hat == fit.mle.sig_h4_ahead$b1hat
-fit.mle.sig_notTT$phi.z == fit.mle.sig_h4_ahead$phi.z
+fit.mle.sig_h4$b0hat == fit.mle.sig_h4_ahead$b0hat
+fit.mle.sig_h4$b1hat == fit.mle.sig_h4_ahead$b1hat
+fit.mle.sig_h4$phi.z == fit.mle.sig_h4_ahead$phi.z
 
 # Model Coefficients
-fit.mle.sig_notTT$phi.z
-fit.mle.sig_notTT$b0hat
-fit.mle.sig_notTT$b1hat
-fit.mle.sig_notTT$wnv
+fit.mle.sig_h4$phi.z
+fit.mle.sig_h4$b0hat
+fit.mle.sig_h4$b1hat
+fit.mle.sig_h4$wnv
 
 # Confidence Intervals
 
-# 1 Year
-fit.mle.sig_h4_ahead$ll[4]
-fit.mle.sig_h4_ahead$ul[4]
-fit.mle.sig_h4_ahead$f[4]
+# Find forecasted Values
+fit.mle.sig_h4_ahead$f[4] # 12.96253 ($426,142.89)
+fit.mle.sig_h4_ahead$ll[4] # 12.86814 ($387,759.27)
+fit.mle.sig_h4_ahead$ul[4] # 13.05691 ($468,321.36)
+fit.mle.sig_h20_ahead$f[20] # 13.18 ($529,665.00)
+fit.mle.sig_h20_ahead$ll[20] # 12.94574 ($419,047.69)
+fit.mle.sig_h20_ahead$ul[20] # 13.41426 ($669,482.30)
 
-# 5 Years
-fit.mle.sig_h20_ahead$ll[20]
-fit.mle.sig_h20_ahead$ul[20]
-fit.mle.sig_h20_ahead$f[20]
+# Forecasting next year (Zoomed In)
+plot(seq(xmin_plot,l+h.short,1),x[xmin_plot:(l+h.short)],type="l",col="black",
+     xlab="Time", ylab = "log Median Housing Sales Price",
+     main="Linear Signal with AR(6) Noise Short Term Forecast",ylim=c(ymin_plot,ymax_future))
+lines(seq((l+1),(l+h.short),1),fit.mle.sig_h4_ahead$f,col="red")
+lines(seq((l+1),(l+h.short),1),fit.mle.sig_h4_ahead$ll,col="blue",lty=3) # lty=3 for dotted line
+lines(seq((l+1),(l+h.short),1),fit.mle.sig_h4_ahead$ul,col="blue",lty=3)
 
-# Residuals
+# Forecasting next 5 years (Zoomed In)
+plot(seq(xmin_plot,l+h.long,1),x[xmin_plot:(l+h.long)],type="l",col="black",
+     xlab="Time", ylab = "log Median Housing Sales Price",
+     main="Linear Signal with AR(6) Noise Long Term Forecast",ylim=c(ymin_plot,ymax_future))
+lines(seq((l+1),(l+h.long),1),fit.mle.sig_h20_ahead$f,col="red")
+lines(seq((l+1),(l+h.long),1),fit.mle.sig_h20_ahead$ll,col="blue",lty=3) # lty=3 for dotted line
+lines(seq((l+1),(l+h.long),1),fit.mle.sig_h20_ahead$ul,col="blue",lty=3)
 
 ```
+
 
 # Multi-variate Models
 
@@ -1290,9 +1305,7 @@ lines(seq((l+1),(l+h.long),1),preds$pred,col="red")
 
 We investigated 3 Neural Nets for predictions: Multilayer Perceptron (MLP), Long Short-Term Memory(LSTM), and Temporal Fusion Transformer (TFT).
 
-## Neural Net (MLP)
-
-MLP
+## Multilayer Perceptron
 
 Four different univariate MLP models were fit to the data for both horizons, and the ASE and RMSE were best in both cases using MLP's default parameters. For the 1 year horizon, the function chose 5 hidden nodes and a Difference of 1. The univariate lags were 1, 2, 3, and 4. For the 5 year horizon, the function chose 5 hidden nodes and a Difference of 1 as well, with lags at 1, 3, and 4. The univariate MLP was used as a baseline for the Multivariate MLP.
 
@@ -1587,7 +1600,7 @@ lines(seq(179,198,1),xtNewForBS, col = "red")
 
 ```
 
-# Multivariate MLP
+## Multivariate MLP
 
 We used forecasted values from the default MLP parameters for our exogenous variables in order to fit a multivariate model to our response variable. The 
 
@@ -1828,153 +1841,48 @@ Error: Error in newdata[, object$model.list$variables] : subscript out of bounds
 
 # Trying what Dr Sadler did, but for an mlp model
 
-# xt = gen.arma.wge(100,phi = .9)
-file_path = "https://raw.githubusercontent.com/aabromowitz/TimeSeriersProject/refs/heads/main/MSPUS.csv"
-mhp <- read.csv(file_path, header = TRUE)
-mhp_1975 = mhp[49:246,]
-xt = log(mhp_1975$MSPUS)
+# make dataframe
+ts.X = data.frame(hor = ts(fed_housing_data$Ownership_Rate), huc = ts(fed_housing_data$Housing_Units_Completed), snh = ts(fed_housing_data$Supply_New_Houses), hpi = ts(fed_housing_data$Housing_Price_Index))
 
-# Exogenous Variables in a DF
-ts.X = data.frame(hor = ts(fed_housing_data$Ownership_Rate), huc = ts(fed_housing_data$Housing_Units_Completed), 
-                  snh = ts(fed_housing_data$Supply_New_Houses), hpi = ts(fed_housing_data$Housing_Price_Index))
+# Make an mlp
+xt = fed_housing_data$Median_Sales_Price
+fit = mlp(ts(xt), comb = 'median', xreg = ts.X, difforder = 1, sel.lag = TRUE) 
 
-# Horizon = 4
-h.long = 4
+# Make the residuals
 l = length(xt)
-xtTrain = xt[1:(l-h.long)]
+lf = length(fit$fitted)
+res = xt[(l-lf+1):l]-fit$fitted
+xtTrain = xt[1:(l-h.short)]
+plotts.wge(res)
 
-# est = est.arma.wge(xtTrain,p = 1)
-library(nnfor)
-set.seed(30)
-fit.mlp = mlp(ts(xt)) # mlp(ts(xt), comb = 'median', xreg = ts.X, difforder = 1, sel.lag = TRUE) 
-###### Error in newdata[, object$model.list$variables] : subscript out of bounds ####
-lf = length(fit.mlp$fitted)
-res = xt[(l-lf+1):l]-fit.mlp$fitted
-
-# Are residuals white noise?
-plotts.sample.wge(res)
-acf(res,lag.max=100)
-ljung.wge(res,K=24) # p = 0.3804433, white noise
-ljung.wge(res,K=48) # p = 0.6786805, white
-hist(res) # look normally distributed
-
-# BSSim = function(ts,res,phi,horizon) {
+# Make the function
 num_back = l - lf
-BSSim = function(ts,res,fit,num_back,horizon) {
-  origin = length(ts)
+BSSim = function(xtTrain,res,fit,num_back,horizon) {
+  origin = length(xtTrain)
   ForHolder = numeric(horizon)
   for(i in (origin+1):(origin+horizon)){
     # ts[i] = ts[i-1]*phi + sample(res,1)
     # print(i)
-    needed_to_predict = ts[(i-num_back):(i-1)]
-    fore=forecast(fit,y=needed_to_predict,h=1)
-    ts[i]=fore$mean+sample(res,1)
-    ForHolder[(i-origin)]=ts[i]
+    needed_to_predict = xtTrain[(i-num_back):(i-1)]
+    needed_to_predict_xreg = ts.X[(i-num_back):i,] # You need an additional one foreward, since you need those to do the prediction for h = 1
+    # fore=forecast(fit,y=needed_to_predict,h=1)
+    fore=forecast(fit,y=needed_to_predict,h=1,xreg=needed_to_predict_xreg)
+    xtTrain[i]=fore$mean+sample(res,1)
+    ForHolder[(i-origin)]=xtTrain[i]
   }
   return(ForHolder)
 }
 
-# BSSamples = 100000
-BSSamples = 100 # I'm worried 100k will take a really long time, so make it less
-
-# holder = matrix(nrow = BSSamples,ncol = 50)
-holder = matrix(nrow = BSSamples,ncol = h.long)
-
-for(i in 1:BSSamples)
-{
-  # xtNewFor = BSSim(xtTrain,est$res,est$phi,50)
-  if ((i %% 100) == 0){
-    print(i)
-  }
-  xtNewFor = BSSim(xtTrain,res,fit.mlp,num_back,h.long)
-  holder[i,] = xtNewFor
-}
-
-# Calculate percentiles for each column
-percentiles_per_column <- apply(holder, 2, function(column) {
-  quantile(column, probs = c(0.025, 0.975))
-})
-
-# Transpose the result for better readability
-percentiles_per_column <- t(percentiles_per_column)
-
-# Print the result
-print(percentiles_per_column)
-
-xtNewForBS = colMeans(holder)
-
-result = fit.mlp$fitted
-
-# plotts.wge(c(xtTrain-est$res,xtNewForBS))
-#plotts.wge(c(fit.mlp$fitted,xtNewForBS),ylim=c(min(fit.mlp$fitted)-.1,max(fit.mlp$fitted)+.1), )
-#lines(seq(lf+1,lf+h.long,1),percentiles_per_column[,1],col = "blue")
-#lines(seq(lf+1,lf+h.long,1),percentiles_per_column[,2],col = "blue")
-#lines(seq(lf+1,lf+h.long,1),xt[(l-h.long+1):l],col = "red")
-
-# Alex edited seq because lines were being plotted that didn't line up with the actual time
-# plotts.wge(c(xtTrain-est$res,xtNewForBS))
-plot(log.mhp[6:198], type = 'l', main = 'Multivariate MLP 1 Year Forecast with Confidence Intervals', 
-     xlab = 'Time', ylab = 'log Median Housing Sales Price', ylim=c(12.4,13.1))
-lines(seq(190,193,1),percentiles_per_column[,1], lty = 3, col = "blue")
-lines(seq(190,193,1),percentiles_per_column[,2], lty = 3, col = "blue")
-lines(seq(190,193,1),xtNewForBS, col = "red")
-
-# Zoomed In
-plot(log.mhp[149:198], type = 'l', main = 'Multivariate MLP 1 Year Forecast with Confidence Intervals', 
-     ylim=c(min(fit.mlp$fitted)-.1,max(fit.mlp$fitted)+.1))
-lines(seq(47,50,1),percentiles_per_column[,1], lty = 3, col = "blue")
-lines(seq(47,50,1),percentiles_per_column[,2], lty = 3, col = "blue")
-lines(seq(47, 50,1),xtNewForBS,ylim=c(min(fit.mlp$fitted)-.1,max(fit.mlp$fitted)+.1),col = "red")
-
-# Horizon = 20  
-h.long = 20
-l = length(xt)
-xtTrain = xt[1:(l-h.long)]
-
-# est = est.arma.wge(xtTrain,p = 1)
-library(nnfor)
-set.seed(30)
-fit.mlp = mlp(ts(xt)) # mlp(ts(xtTrain), comb = 'median', xreg = ts.train.X.20, difforder = 1, sel.lag = TRUE)
-  ###### Error in newdata[, object$model.list$variables] : subscript out of bounds ####
-lf = length(fit.mlp$fitted)
-res = xt[(l-lf+1):l]-fit.mlp$fitted
-
-# Are residuals white noise?
-plotts.sample.wge(res)
-acf(res,lag.max=100)
-ljung.wge(res,K=24) # p = 0.3804433, white noise
-ljung.wge(res,K=48) # p = 0.6786805, white
-hist(res) # look normally distributed
-
-# BSSim = function(ts,res,phi,horizon) {
-num_back = l - lf
-BSSim = function(ts,res,fit,num_back,horizon) {
-  origin = length(ts)
-  ForHolder = numeric(horizon)
-  for(i in (origin+1):(origin+horizon)){
-    # ts[i] = ts[i-1]*phi + sample(res,1)
-    # print(i)
-    needed_to_predict = ts[(i-num_back):(i-1)]
-    fore=forecast(fit,y=needed_to_predict,h=1)
-    ts[i]=fore$mean+sample(res,1)
-    ForHolder[(i-origin)]=ts[i]
-  }
-  return(ForHolder)
-}
-
-# BSSamples = 100000
+# Run the function
 BSSamples = 1000 # I'm worried 100k will take a really long time, so make it less
-
-# holder = matrix(nrow = BSSamples,ncol = 50)
-holder = matrix(nrow = BSSamples,ncol = h.long)
-
+holder = matrix(nrow = BSSamples,ncol = h.short)
 for(i in 1:BSSamples)
 {
   # xtNewFor = BSSim(xtTrain,est$res,est$phi,50)
   if ((i %% 100) == 0){
     print(i)
   }
-  xtNewFor = BSSim(xtTrain,res,fit.mlp,num_back,h.long)
+  xtNewFor = BSSim(xtTrain,res,fit,num_back,h.short)
   holder[i,] = xtNewFor
 }
 
@@ -1992,25 +1900,73 @@ print(percentiles_per_column)
 xtNewForBS = colMeans(holder)
 
 # plotts.wge(c(xtTrain-est$res,xtNewForBS))
-#plotts.wge(c(fit.mlp$fitted,xtNewForBS),ylim=c(min(fit.mlp$fitted)-.1,max(fit.mlp$fitted)+.1), )
-#lines(seq(lf+1,lf+h.long,1),percentiles_per_column[,1],col = "blue")
-#lines(seq(lf+1,lf+h.long,1),percentiles_per_column[,2],col = "blue")
-#lines(seq(lf+1,lf+h.long,1),xt[(l-h.long+1):l],col = "red")
+# plotts.wge(c(fit$fitted,xtNewForBS),ylim=c(min(fit$fitted)-.1,max(fit$fitted)+.1)) # black is predictions
+plotts.wge(c(fit$fitted,xtNewForBS),ylim=c(12.4,max(fit$fitted)+.1),xlim=c(150,length(c(fit$fitted,xtNewForBS)))) # black is predictions
+lines(seq(lf+1,lf+h.short,1),percentiles_per_column[,1],col = "blue") # blue are confidence intervals
+lines(seq(lf+1,lf+h.short,1),percentiles_per_column[,2],col = "blue")
+lines(seq(lf+1,lf+h.short,1),xt[(l-h.short+1):l],col = "red") # Actual values
 
-# Alex edited seq because lines were being plotted that didn't line up with the actual time
+# Horizon = 20
+
+# Make the residuals
+l = length(xt)
+lf = length(fit$fitted)
+res = xt[(l-lf+1):l]-fit$fitted
+xtTrain = xt[1:(l-h.long)]
+plotts.wge(res)
+
+# Make the function
+num_back = l - lf
+BSSim = function(xtTrain,res,fit,num_back,horizon) {
+  origin = length(xtTrain)
+  ForHolder = numeric(horizon)
+  for(i in (origin+1):(origin+horizon)){
+    # ts[i] = ts[i-1]*phi + sample(res,1)
+    # print(i)
+    needed_to_predict = xtTrain[(i-num_back):(i-1)]
+    needed_to_predict_xreg = ts.X[(i-num_back):i,] # You need an additional one foreward, since you need those to do the prediction for h = 1
+    # fore=forecast(fit,y=needed_to_predict,h=1)
+    fore=forecast(fit,y=needed_to_predict,h=1,xreg=needed_to_predict_xreg)
+    xtTrain[i]=fore$mean+sample(res,1)
+    ForHolder[(i-origin)]=xtTrain[i]
+  }
+  return(ForHolder)
+}
+
+# Run the function
+BSSamples = 1000 # I'm worried 100k will take a really long time, so make it less
+holder = matrix(nrow = BSSamples,ncol = h.long)
+for(i in 1:BSSamples)
+{
+  # xtNewFor = BSSim(xtTrain,est$res,est$phi,50)
+  if ((i %% 100) == 0){
+    print(i)
+  }
+  xtNewFor = BSSim(xtTrain,res,fit,num_back,h.long)
+  holder[i,] = xtNewFor
+}
+
+# Calculate percentiles for each column
+percentiles_per_column <- apply(holder, 2, function(column) {
+  quantile(column, probs = c(0.025, 0.975))
+})
+
+# Transpose the result for better readability
+percentiles_per_column <- t(percentiles_per_column)
+
+# Print the result
+print(percentiles_per_column)
+
+xtNewForBS = colMeans(holder)
+
 # plotts.wge(c(xtTrain-est$res,xtNewForBS))
-plot(log.mhp[6:198], type = 'l', main = 'Multivariate MLP 5 Year Forecast with Confidence Intervals', 
-     xlab = 'Time', ylab = 'log Median Housing Sales Price', ylim=c(min(fit.mlp$fitted)-.1,max(fit.mlp$fitted)+.1))
-lines(seq(174,193,1),percentiles_per_column[,1], lty = 3, col = "blue")
-lines(seq(174,193,1),percentiles_per_column[,2], lty = 3, col = "blue")
-lines(seq(174,193,1),xtNewForBS,col = "red")
+# plotts.wge(c(fit$fitted,xtNewForBS),ylim=c(min(fit$fitted)-.1,max(fit$fitted)+.1)) # black is predictions
+plotts.wge(c(fit$fitted,xtNewForBS),ylim=c(12.4,max(fit$fitted)+.1),xlim=c(150,length(c(fit$fitted,xtNewForBS))), 
+           main = 'Multivariate MLP 5 Year Forecast with Confidence Intervals') # black is predictions
+lines(seq(lf+1,lf+h.long,1),percentiles_per_column[,1],col = "blue") # blue are confidence intervals
+lines(seq(lf+1,lf+h.long,1),percentiles_per_column[,2],col = "blue")
+lines(seq(lf+1,lf+h.long,1),xt[(l-h.long+1):l],col = "red") # Actual values
 
-# Zoomed In
-plot(log.mhp[149:198], type = 'l', main = 'Multivariate MLP 5 Year Forecast with Confidence Intervals',
-     ylim=c(min(fit.mlp$fitted)-.1,max(fit.mlp$fitted)+.1))
-lines(seq(31,50,1),percentiles_per_column[,1], lty = 3, col = "blue")
-lines(seq(31,50,1),percentiles_per_column[,2], lty = 3, col = "blue")
-lines(seq(31,50,1),xtNewForBS, col = "red")
 ```
 
 ## Evaluate the Model
@@ -2601,11 +2557,15 @@ metrics # 1146
 # Ensemble
 
 ## Short Term Ensemble: VAR + MLP
+
+Since the VAR model overpredicted and the MLP underpredicted for the short term forecast, we tried an ensemble model that averaged the two. This gave us an ASE of 34.9M, which is our lowest ASE so far. The RMSE was also our best metric too, at 0.0012, though that was based only on the last window and was not a rolling window. Ultimately, we decided to use a single model for the ensemble method instead of splitting it up for the sake of the presentation time.
+
 ```{r Ensemble Model Short Term}
 log.mhp = fed_housing_data$Median_Sales_Price
 
 # Refit VAR Model
-x = fed_housing_data
+x = fed_housing_data[1:194,]
+l = length(x)
 x$Year_Quarter = c()
 VARselect(x,lag.max=16,type="both",season=NULL,exogen=NULL) # lag = 4
 fit = VAR(x,p=4,type='both') 
@@ -2613,12 +2573,18 @@ summary(fit) # trend and const were significant, but only lag up to 2 for variab
 preds=predict(fit,n.ahead=h.short)
 
 # VAR Metrics
-ase = mean((fed_housing_data_NL$Median_Sales_Price[(l-h.short+1):l]-exp(preds$fcst$Median_Sales_Price[,1]))^2)/1e6
+ase = mean((fed_housing_data_NL$Median_Sales_Price[(l-h.short+1):l]-exp(preds$fcst$Median_Sales_Price[,1]))^2)
 ase # 46.3595
 
 # VAR Plot
-plot(seq(1,l,1),x$Median_Sales_Price,type="b")
-points(seq(l-h.short+1,l,1),preds$fcst$Median_Sales_Price[1:h.short,1],type="b",pch=15,col="blue")
+plot(seq(1,198,1),fed_housing_data$Median_Sales_Price,type="b")
+points(seq(195,198,1),preds$fcst$Median_Sales_Price[1:h.short,1],type="b",pch=15,col="blue")
+fanchart(preds)
+
+# Zoomed in VAR Plot
+# VAR Plot
+plot(seq(150,198,1),fed_housing_data$Median_Sales_Price[150:198],type="b")
+points(seq(195,198,1),preds$fcst$Median_Sales_Price[1:h.short,1],type="b",pch=15,col="blue")
 fanchart(preds)
 
 # Refit Univariate MLP Model
@@ -2675,6 +2641,7 @@ RMSE.ensemble.4
 
 ## Long Term Ensemble: SPN + MLP
 
+We tested an ensemble method for SPN and MLP just to see how it looked. There was not a compelling reason since they both had the same behavior.
 ```{r Ensemble Model Long Term}
 log.mhp = fed_housing_data$Median_Sales_Price
 
