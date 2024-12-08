@@ -1022,6 +1022,11 @@ In 1 year, we are 95% confident that the median home sale price will be between 
 In 5 years, we are 95% confident that the median home sale price will be between $419,048 (e^12.94574) and $669,482 (e^13.41426). Our best estimate is $529,665 (e^13.18).
 
 ```{r Model Choice}
+log.mhp = fed_housing_data$Median_Sales_Price
+x = fed_housing_data$Median_Sales_Price
+l = length(log.mhp)
+h.short = 4
+h.long = 20
 
 # Fit with MLE estimates, using all data, forecasting ahead 1 year
 fit.mle.sig_h4_ahead = fore.sigplusnoise.wge(log.mhp, linear = TRUE, method = 'mle', freq = 0, max.p = 6, n.ahead = 4, lastn = FALSE)
@@ -1416,7 +1421,7 @@ points(seq(179,198,1), f.20$mean, type = 'l', col = 'red')
 
 We were able to create confidence intervals for the univariate model by taking the 5th and 95th percentiles of bootstrapped residuals. These confidence intervals did contain the actual values for both backcasts.
 
-```{r Univariate MLP Confidence Intervals}
+```{r Univariate MLP Confidence Intervals, warning=FALSE}
 ################################################################################
 
 # Trying what Dr Sadler did, but for an mlp model
@@ -1652,7 +1657,7 @@ In 1 year, we are 95% confident that the median home sale price will be between 
 
 In 5 years, we are 95% confident that the median home sale price will be between $375,203 (e^12.83522) and $654,866 (e^13.39219). Our best estimate is $496,983 (e^13.11631).
 
-```{r Future Univariate MLP Confidence Intervals}
+```{r Future Univariate MLP Confidence Intervals, warning=FALSE}
 ################################################################################
 
 # Trying what Dr Sadler did, but for an mlp model
@@ -2295,7 +2300,7 @@ lines(seq(199,218), f.xreg.d2.20$mean, col = "red")
 
 ### CI for Future Forecast with Multivariate MLP
 
-```{r CI for Future Multivariate MLP, warning=FALSE, include=}
+```{r CI for Future Multivariate MLP, warning=FALSE}
 ################################################################################
 
 # Trying what Dr Sadler did, but for an mlp model
