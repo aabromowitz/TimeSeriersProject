@@ -2038,10 +2038,17 @@ plot(log.mhp, type = 'l')
 points(seq(195,198), forecasted.mlp.X.d1.4$mean, type = 'l', col = 'red', pch = 3)
 points(seq(179,198), forecasted.mlp.X.d2.20$mean, type = 'l', col = 'red', pch = 3)
 
-# Best Multivariate Models Zoomed In
-plot(log.mhp[149:198], type = 'l', main = "Multivariate MLP Forecast for last 1 & 5 Years")
-points(seq(47,50), forecasted.mlp.X.d1.4$mean, type = 'l', col = 'red', pch = 3)
-points(seq(31,50), forecasted.mlp.X.d2.20$mean, type = 'l', col = 'red', pch = 3)
+# Best 1 Year Multivariate Model Zoomed In
+plot(seq(150,198,1),log.mhp[150:198], ylim = c(ymin_plot, ymax_future), type = 'l', 
+     xlab = 'Time', ylab = 'log Median Housing Sales Price',
+     main = "Multivariate MLP Short Term Forecast")
+points(seq(195,198), forecasted.mlp.X.d1.4$mean, type = 'l', col = 'red')
+
+# Best 5 Year Multivariate Models Zoomed In
+plot(seq(150,198,1),log.mhp[150:198], ylim = c(ymin_plot, ymax_future), type = 'l', 
+     xlab = 'Time', ylab = 'log Median Housing Sales Price',
+     main = "Multivariate MLP Long Term Forecast")
+points(seq(179,198), forecasted.mlp.X.d2.20$mean, type = 'l', col = 'red')
 
 ```
 ### Confidence Intervals for Multivariate Models
