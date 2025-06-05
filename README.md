@@ -1,6 +1,7 @@
 # TimeSeriersProject
 Github Repository for SMU Time Series Project that is connected to R
 
-Testing Alex edits...
+YouTube Presentation of Slide Deck:
+PDF Version of slide deck included in respository
 
-Testing Testing 123
+Final RMD title:
