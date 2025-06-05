@@ -1,7 +1,7 @@
 # TimeSeriersProject
 Github Repository for SMU Time Series Project that is connected to R
 
-YouTube Presentation of Slide Deck:
-PDF Version of slide deck included in respository
+YouTube Presentation of Slide Deck: https://youtu.be/Yl1-x-Ha8Xw
+PDF Version of slide deck included in respository: SlideDeck.pdf
 
-Final RMD title:
+To view final and complete R Markdown code: ProjectFinal.Rmd
