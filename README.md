@@ -1,5 +1,5 @@
 # TimeSeriersProject
-Github Repository for SMU Time Series Project that is connected to R
+Github Repository for SMU Time Series Project that is connected to R Studio
 
 YouTube Presentation of Slide Deck: https://youtu.be/Yl1-x-Ha8Xw
 
